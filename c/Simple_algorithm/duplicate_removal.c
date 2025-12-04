@@ -4,6 +4,7 @@ int main()
 {
     int n;
     scanf("%d",&n);
+    int m = n;
     int a[n];
     int b[n];
     int i,j;
@@ -20,8 +21,11 @@ int main()
         }
     }
 
-    for (i = 0;i < n;i++) {
-        printf("%d",b[i]);
+    for (i = 0;i < m;i++) {
+        if (b[i] == 0) {
+            break;
+        }
+        printf("%d ",b[i]);
     }
     return 0;
 }
