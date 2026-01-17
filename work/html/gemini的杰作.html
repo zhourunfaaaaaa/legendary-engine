@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Flow</title>
+    <style>
+        :root {
+            --bg-color: #FAFAFA;
+            --text-color: #333333;
+            --accent-color: #2D2D2D;
+            --secondary-text: #888888;
+            --circle-bg: #E0E0E0;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; transition: all 0.3s ease; }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* 容器与布局 */
+        .container {
+            text-align: center;
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        /* 任务输入区 */
+        .task-input-group {
+            margin-bottom: 40px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .task-input-group.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-20px);
+        }
+
+        input.task-input {
+            width: 100%;
+            border: none;
+            border-bottom: 2px solid var(--circle-bg);
+            background: transparent;
+            font-size: 1.5rem;
+            text-align: center;
+            padding: 10px;
+            outline: none;
+            color: var(--text-color);
+        }
+
+        input.task-input:focus {
+            border-bottom-color: var(--accent-color);
+        }
+
+        input.task-input::placeholder {
+            color: #CCC;
+        }
+
+        /* 计时器圆环容器 */
+        .timer-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
+        }
+
+        /* SVG 圆环 */
+        svg.progress-ring {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg); /* 从顶部开始 */
+        }
+
+        circle {
+            fill: transparent;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .ring-bg {
+            stroke: var(--circle-bg);
+        }
+
+        .ring-progress {
+            stroke: var(--accent-color);
+            stroke-dasharray: 880; /* 2 * PI * R (R=140) ≈ 879.6 */
+            stroke-dashoffset: 0; 
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        /* 中间的时间文字 */
+        .timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .time-display {
+            font-size: 4rem;
+            font-weight: 200;
+            font-variant-numeric: tabular-nums; /* 等宽数字，防止抖动 */
+            letter-spacing: -2px;
+        }
+
+        .current-task-label {
+            font-size: 1rem;
+            color: var(--secondary-text);
+            margin-top: 10px;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+        }
+        
+        .current-task-label.show {
+            opacity: 1;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 50px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            color: var(--secondary-text);
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-color);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="task-input-group" id="inputGroup">
+            <input type="text" class="task-input" id="taskInput" placeholder="主要任务是什么？" autocomplete="off">
+        </div>
+
+        <div class="timer-container">
+            <svg class="progress-ring">
+                <circle class="ring-bg" r="140" cx="150" cy="150"></circle>
+                <circle class="ring-progress" id="progressRing" r="140" cx="150" cy="150"></circle>
+            </svg>
+            
+            <div class="timer-text">
+                <div class="time-display" id="timeDisplay">25:00</div>
+                <div class="current-task-label" id="taskLabel">准备开始</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-secondary" id="resetBtn" style="display: none;">放弃</button>
+            <button class="btn-primary" id="toggleBtn">开始专注</button>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const FOCUS_TIME = 25 * 60; // 25分钟，单位秒
+        const RADIUS = 140;
+        const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+        // DOM 元素
+        const progressRing = document.getElementById('progressRing');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const taskInput = document.getElementById('taskInput');
+        const inputGroup = document.getElementById('inputGroup');
+        const taskLabel = document.getElementById('taskLabel');
+
+        // 状态变量
+        let timeLeft = FOCUS_TIME;
+        let isRunning = false;
+        let timerId = null;
+        let originalTitle = document.title;
+
+        // 初始化 SVG
+        progressRing.style.strokeDasharray = `${CIRCUMFERENCE} ${CIRCUMFERENCE}`;
+        progressRing.style.strokeDashoffset = 0;
+
+        // 更新进度条函数
+        function setProgress(percent) {
+            const offset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        // 格式化时间 mm:ss
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // 更新 UI
+        function updateDisplay() {
+            timeDisplay.textContent = formatTime(timeLeft);
+            const percent = (timeLeft / FOCUS_TIME) * 100;
+            setProgress(percent);
+            
+            // 更新网页标题
+            if (isRunning) {
+                document.title = `(${formatTime(timeLeft)}) 专注中...`;
+            } else {
+                document.title = originalTitle;
+            }
+        }
+
+        // 开始/暂停逻辑
+        function toggleTimer() {
+            if (isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            // 如果没有输入任务，且是第一次开始
+            if (timeLeft === FOCUS_TIME && !taskInput.value.trim()) {
+                taskInput.focus();
+                taskInput.placeholder = "请先设定一个目标...";
+                return;
+            }
+
+            isRunning = true;
+            toggleBtn.textContent = "暂停";
+            resetBtn.style.display = "block";
+            
+            // UI 切换：隐藏输入框，显示任务标签
+            inputGroup.classList.add('hidden');
+            taskLabel.textContent = taskInput.value || "未命名任务";
+            taskLabel.classList.add('show');
+
+            timerId = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay();
+                } else {
+                    completeTimer();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            toggleBtn.textContent = "继续";
+            clearInterval(timerId);
+            updateDisplay();
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timeLeft = FOCUS_TIME;
+            toggleBtn.textContent = "开始专注";
+            resetBtn.style.display = "none";
+            
+            // UI 切换：显示输入框，隐藏任务标签
+            inputGroup.classList.remove('hidden');
+            taskLabel.classList.remove('show');
+            taskInput.value = ""; // 清空任务
+            
+            updateDisplay();
+        }
+
+        function completeTimer() {
+            pauseTimer();
+            toggleBtn.textContent = "完成";
+            alert("专注结束！休息一下吧。");
+            resetTimer();
+        }
+
+        // 事件监听
+        toggleBtn.addEventListener('click', toggleTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        
+        // 允许按回车开始
+        taskInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                toggleTimer();
+            }
+        });
+
+        // 初始化
+        updateDisplay();
+
+    </script>
+</body>
+</html>

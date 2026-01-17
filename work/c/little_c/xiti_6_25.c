@@ -7,11 +7,11 @@ int main()
     int t = n;
     int digit = 0;
     int s[10];
-    while (t > 0) {
+    do {
         s[digit] = t%10;
         t /= 10;
         digit++;
-    }
+    } while (t > 0);
 
     int f = 1;
     int num[10] = {0};
