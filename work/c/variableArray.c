@@ -25,7 +25,7 @@ int* array_at(Array *a,int index)
     if (index > a->size) {
         array_inflate(a,(index/BLOCK_SIZE+1)*BLOCK_SIZE - a->size);
     }
-    return a->array[index];
+    return &(a->array[index]);
 }
 
 int array_size(Array *a)
@@ -33,14 +33,23 @@ int array_size(Array *a)
     return a->size;
 }
 
+// void array_inflate(Array *a,int more_size)
+// {
+//     int *p = (int*)malloc(sizeof(int)*(a->size + more_size));
+//     for (int i = 0;i < a->size;i++){
+//         p[i] = a->array[i];
+//     }
+//     free(a->array);
+//     a->size += more_size;
+//     a->array = p;
+// }
+
 void array_inflate(Array *a,int more_size)
 {
-    int *p = (int*)malloc(sizeof(int)*(a->size + more_size));
-    for (int i = 0;i < a->array;i++){
-        p[i] = a->array[i];
-    }
-    a->size += more_size;
+    int new_size = a->size + more_size;
+    int *p = (int*)realloc(a->array,sizeof(int) * new_size);
     a->array = p;
+    a->size = new_size;
 }
 
 int main()
