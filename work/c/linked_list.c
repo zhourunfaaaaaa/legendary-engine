@@ -8,7 +8,7 @@ typedef struct list {
 }List;// 封装
 
 // 添加链表
-list_add(List *list,int number)
+void list_add(List *list,int number)
 {
     Node *p = (Node*)malloc(sizeof(Node));
     p->value = number;
