@@ -43,6 +43,8 @@ void list_delete(List *list,int number)
         if (p->value == number) {
             if (q == NULL) {
                 list->head = t;
+                free(p);
+                p = t;
             } else {
                 q->next = t;
                 free(p);
@@ -61,7 +63,7 @@ void list_clear(List *list)
 {
     Node *p;
     Node *q;
-    for (p = list->head; p;p = q) {
+    for (p = list->head,q = NULL; p;p = q) {
         q = q->next;
         free(p);
     }
@@ -74,7 +76,7 @@ int main()
     Node *head = NULL;
     Node *tail = NULL;
     List list;
-    list.head = &head;
+    list.head = head;
     int number = 0;
     do {
         scanf("%d",&number);
