@@ -64,7 +64,7 @@ void list_clear(List *list)
     Node *p;
     Node *q;
     for (p = list->head,q = NULL; p;p = q) {
-        q = q->next;
+        q = p->next;
         free(p);
     }
     list->head = NULL;
@@ -73,10 +73,9 @@ void list_clear(List *list)
 
 int main()
 {
-    Node *head = NULL;
-    Node *tail = NULL;
     List list;
-    list.head = head;
+    list.head = NULL;
+    list.tail = NULL;
     int number = 0;
     do {
         scanf("%d",&number);
