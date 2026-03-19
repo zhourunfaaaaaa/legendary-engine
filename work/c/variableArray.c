@@ -10,31 +10,28 @@ int main()
     Array a = array_creat(size);
     int number,cnt = 0;
     printf("你的数组初始大小为：%d\n",array_size(&a));
-    printf("第%d个数填(输入-1停止)：",cnt+1);
-    scanf("%d",&number);
-    while(number != -1) {
+    
+    do {
+        printf("第%d个数填(输入-1停止)：",cnt+1);
+        scanf("%d",&number);
         if (cnt+1 >= a.size) {
             array_inflate(&a,BLOCK_SIZE);
             break;
         }
         *array_at(&a,cnt) = number;
         cnt++;
-        printf("第%d个数填(输入-1停止)：",cnt+1);
-        scanf("%d",&number);
-    }
+    } while (number != -1);
     printf("现在你的数组大小是：%d\n",array_size(&a));
     int index;
-    printf("输入你想查询的数字位置：");
-    scanf("%d",&index);
-    while (index != -1) {
+    do {
+        printf("输入你想查询的数字位置：");
+        scanf("%d",&index);
         if(index >= array_size(&a)) {
             printf("禁止偷看！\n");
         } else {
             printf("第%d位的数字是%d\n",index,*array_at(&a,index-1));
         }
-        printf("输入你想查询的数字位置：");
-        scanf("%d",&index);
-    }
+    } while (index != -1);
 
     return 0;
 }
