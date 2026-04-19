@@ -9,7 +9,10 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}\\output\\${fileBasenameNoExtension}.exe"  // 用 fileDirname 而不是 workspaceFolder
+                "${fileDirname}\\output\\${fileBasenameNoExtension}.exe",
+                "-leasyx",
+                "-lgdi32",
+                "-lole32"
             ],
             "options": {
                 "cwd": "${fileDirname}"
