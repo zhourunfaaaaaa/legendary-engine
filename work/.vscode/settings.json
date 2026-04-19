@@ -1,0 +1,4 @@
+{
+    "c-cpp-compile-run.output-location": "output",
+    "c-cpp-compile-run.mirror-output-location": true
+}

@@ -6,7 +6,7 @@ vector<vector<int>> rst;
 vector<int> path;
 vector<bool> used;
 
-// 全排序和子集枚举一个最大的区别就是在dfs内多了一个for循环，因为要选够n个数字。
+// 全排序和子集枚举一个最大的区别就是在dfs内多了一个for循环，因为要选够n个数字，而且不需要再递归一次。
 void dfs(vector<int> &nums) {
     if (path.size() == nums.size()) {
         rst.push_back(path);

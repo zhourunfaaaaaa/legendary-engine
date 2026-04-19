@@ -9,7 +9,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}\\output\\${fileBasenameNoExtension}.exe",
+                "${workspaceFolder}\\output\\${fileBasenameNoExtension}.exe",
                 "-leasyx",
                 "-lgdi32",
                 "-lole32"
