@@ -1,4 +1,35 @@
 {
     "c-cpp-compile-run.output-location": "output",
-    "c-cpp-compile-run.mirror-output-location": true
+    "c-cpp-compile-run.mirror-output-location": true,
+    "latex-workshop.latex.recipe.default": "xelatex x2",
+    "latex-workshop.latex.tools": [
+        {
+            "name": "xelatex",
+            "command": "xelatex",
+            "args": [
+                "-interaction=nonstopmode",
+                "-synctex=1",
+                "%DOC%"
+            ]
+        },
+        {
+            "name": "pdflatex",
+            "command": "pdflatex",
+            "args": [
+                "-interaction=nonstopmode",
+                "-synctex=1",
+                "%DOC%"
+            ]
+        }
+    ],
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "xelatex",
+            "tools": ["xelatex"]
+        },
+        {
+            "name": "xelatex x2",
+            "tools": ["xelatex", "xelatex"]
+        }
+    ]
 }

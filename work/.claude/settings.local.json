@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xelatex -interaction=nonstopmode \"小学期实验报告.tex\")",
+      "Bash(xelatex \"小学期实验报告_完整.tex\")"
+    ]
+  }
+}
