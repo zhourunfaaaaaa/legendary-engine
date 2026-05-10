@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "linked-list.h"
+#include "linkedList_WenKai.h"
 
 typedef struct list {
     Node *head;
