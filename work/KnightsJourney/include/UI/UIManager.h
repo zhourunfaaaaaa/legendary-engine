@@ -7,6 +7,7 @@
 #include <functional>
 
 class Player;
+class Boss;
 class BuffManager;
 struct BuffData;
 struct RoomData;
@@ -76,8 +77,9 @@ public:
     // === HUD ===
     void RenderHUD(Player* player, const BuffManager& buffMgr,
                    int currentLevel, BiomeType biome, int gold,
-                   const RoomData* currentRoom);
+                   const RoomData* currentRoom, int activeEnemies);
     void RenderMiniMap(const class MapGenerator* map);
+    void RenderBossBar(const Boss* boss);
     void RenderHPBar(float x, float y, int current, int max, COLORREF fillColor, COLORREF bgColor);
     void RenderShieldBar(float x, float y, int current, int max);
     void RenderMPBar(float x, float y, int current, int max);
@@ -124,7 +126,7 @@ public:
     // === 工具 ===
     bool IsMouseInRect(int mouseX, int mouseY, const AABB& rect);
     void GetMousePos(int& outX, int& outY) const;
-    void SetDefaultFont(int height, const char* fontName = "Consolas");
+    void SetDefaultFont(int height, const char* fontName = "Microsoft YaHei UI");
 
     // 设置/获取界面选中的天赋选项
     void SetTalentOptions(const std::vector<TalentOption>& options) { m_talentOptions = options; }

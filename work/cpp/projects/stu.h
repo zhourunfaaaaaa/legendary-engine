@@ -44,7 +44,7 @@ typedef struct {
     int position;
 } Index;
 
-extern Student students[MAX_STUDENTS_NUMBER];
+extern Student students[MAX_STUDENTS_NUMBER];// extern表示声明而不是定义，具体定义在stu.c
 extern int student_count;
 
 extern Course courses[MAX_COURSES_NUMBER];
@@ -57,12 +57,14 @@ extern Payment payments[MAX_PAYMENT_NUMBER];
 extern int payment_count;
 
 extern Index students_index[MAX_STUDENTS_NUMBER];
-extern int students_index_count;
+extern int student_index_count;
 
 extern Index courses_index[MAX_COURSES_NUMBER];
-extern int courses_index_count;
+extern int course_index_count;
 
 int get_string(char* destination, int size);
+
+int input_required(const char* prompt, char* destination, int size);
 
 int get_int(int *value);
 
@@ -72,6 +74,20 @@ int validate_date(const char* date);
 
 int load_table(const char* file_name, void* buffer, int* count, int maximum, size_t record_size);
 
-int save_table(const char* file_name, void* buffer, int* count, size_t record_size);
+int save_table(const char* file_name, void* buffer, int count, size_t record_size);
+
+void load_all(void);
+
+void save_all(void);
+
+int binary_research_index(Index* index, int count, const char* key);
+
+int find_student(const char* id);
+
+int find_course(const char* code);
+
+void build_index(void);
+
+void add_student(void);
 
 #endif

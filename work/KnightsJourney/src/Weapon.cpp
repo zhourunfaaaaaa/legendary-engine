@@ -20,7 +20,8 @@ Weapon::Weapon()
     , m_critChance(0.0f)
     , m_projectileCount(1)
     , m_level(1)
-    , m_price(0) {
+    , m_price(0)
+    , m_shooterForwardSpeed(0.0f) {
 }
 
 // ============================================================
@@ -57,6 +58,7 @@ Bullet* Weapon::CreateBullet(const Vector2& position, const Vector2& direction,
     bullet->SetFaction(faction);
     bullet->SetDamage(m_baseDamage);
     bullet->SetSourceWeapon(GetType());
+    bullet->SetInheritedForwardSpeed(faction == BulletFaction::PLAYER ? m_shooterForwardSpeed : 0.0f);
 
     // 暴击判定
     if (m_critChance > 0.0f) {

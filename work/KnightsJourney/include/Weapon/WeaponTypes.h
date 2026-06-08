@@ -1,6 +1,56 @@
 #pragma once
 
 #include "Weapon.h"
+#include <memory>
+
+enum class WeaponPattern {
+    SINGLE,
+    SPREAD,
+    BURST,
+    FLAME,
+    HOMING,
+    BOUNCE,
+    EXPLOSIVE,
+    LASER,
+    ORBITAL,
+    CODEX
+};
+
+struct WeaponSpec {
+    WeaponType type;
+    const char* name;
+    const char* shortName;
+    const char* description;
+    int tier;
+    int mpCost;
+    float fireRate;
+    int damage;
+    int projectileCount;
+    float spreadAngle;
+    float bulletSpeed;
+    float lifetime;
+    unsigned int color;
+    int price;
+    WeaponPattern pattern;
+    bool piercing;
+    bool burning;
+    bool slowing;
+    bool lifeSteal;
+    int maxPierce;
+    int maxBounces;
+    float explosionRadius;
+    float homingStrength;
+};
+
+const WeaponSpec& GetWeaponSpec(WeaponType type);
+const char* GetWeaponDisplayName(WeaponType type);
+const char* GetWeaponShortName(WeaponType type);
+const char* GetWeaponDescription(WeaponType type);
+int GetWeaponTier(WeaponType type);
+int GetWeaponPrice(WeaponType type);
+int GetWeaponCount();
+WeaponType RollWeaponByTier(int worldLevel, bool shopRoll);
+std::unique_ptr<Weapon> CreateWeaponByType(WeaponType type);
 
 // ============================================================
 // 1. 突击步枪 (AssaultRifle)
@@ -152,4 +202,21 @@ private:
     float   m_lifeStealChance;   // 20%
     int     m_lifeStealAmount;   // 1 HP
     float   m_batSpeed;
+};
+
+class GenericWeapon : public Weapon {
+public:
+    explicit GenericWeapon(WeaponType type);
+    virtual void Fire(const Vector2& position, const Vector2& direction,
+                      BulletFaction faction, EntityManager& entityMgr) override;
+    virtual const char* GetName() const override;
+    virtual WeaponType GetType() const override { return m_type; }
+    virtual const char* GetDescription() const override;
+
+private:
+    Bullet* SpawnSpecBullet(const Vector2& position, const Vector2& direction,
+                            BulletFaction faction, EntityManager& entityMgr,
+                            float speedScale = 1.0f, float lifetimeScale = 1.0f);
+
+    WeaponType m_type;
 };

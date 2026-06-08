@@ -11,32 +11,42 @@
 BuffManager::BuffManager()
     : m_hasFireShield(false), m_hasIceShield(false), m_hasBloodthirst(false)
     , m_hasCDReduction(false), m_hasSpreadIncrease(false), m_hasDamageBoost(false)
-    , m_hasGoldBonus(false), m_hasReviveCharm(false) {}
+    , m_hasGoldBonus(false), m_hasReviveCharm(false)
+    , m_hasPotionMastery(false), m_hasBossHunter(false), m_hasTreasureInstinct(false) {}
 
 void BuffManager::Init() {
-    // 初始化所有 10 个天赋定义
+    m_buffDefinitions.clear();
     BuffData b;
 
-    b.type = BuffType::HP_BOOST; b.name = "生命强化"; b.description = "最大生命值 +4"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::MP_BOOST; b.name = "能量强化"; b.description = "最大能量 +50"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::FIRE_SHIELD; b.name = "火盾"; b.description = "免疫火焰伤害和地面灼烧"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::ICE_SHIELD; b.name = "冰盾"; b.description = "冰系伤害减半，免疫减速"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::BLOODTHIRST; b.name = "嗜血"; b.description = "击杀敌人回复 1 HP"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::CD_REDUCTION; b.name = "CD缩减"; b.description = "技能冷却时间 -40%"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::SPREAD_INCREASE; b.name = "散弹增加"; b.description = "霰弹枪子弹数 +2"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::DAMAGE_BOOST; b.name = "伤害强化"; b.description = "所有武器伤害 +2"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::GOLD_BONUS; b.name = "金币加成"; b.description = "金币掉落翻倍，商店 8 折"; b.isConsumable = false;
-    m_buffDefinitions.push_back(b);
-    b.type = BuffType::REVIVE_CHARM; b.name = "复活十字章"; b.description = "死亡时自动复活一次"; b.isConsumable = true;
-    m_buffDefinitions.push_back(b);
+    auto add = [&](BuffType type, const char* name, const char* desc, bool consumable = false) {
+        b = BuffData();
+        b.type = type;
+        b.name = name;
+        b.description = desc;
+        b.isConsumable = consumable;
+        m_buffDefinitions.push_back(b);
+    };
+
+    add(BuffType::HP_BOOST, "树心护符", "最大生命 +3，并立即回满");
+    add(BuffType::MP_BOOST, "蓝晶电池", "最大能量 +60，并立即回满");
+    add(BuffType::FIRE_SHIELD, "熔火靴", "免疫火焰地面，爆炸范围提升");
+    add(BuffType::ICE_SHIELD, "霜纹披肩", "免疫冰冻减速，冰伤减半");
+    add(BuffType::BLOODTHIRST, "红月契约", "击杀敌人回复 1 HP");
+    add(BuffType::CD_REDUCTION, "快手护腕", "技能冷却 -30%");
+    add(BuffType::SPREAD_INCREASE, "扩容弹巢", "多弹武器额外 +1 发");
+    add(BuffType::DAMAGE_BOOST, "磨刃核心", "所有当前武器伤害 +1");
+    add(BuffType::GOLD_BONUS, "商会印章", "金币 +60%，商店 85 折");
+    add(BuffType::REVIVE_CHARM, "余烬吊坠", "死亡时自动复活一次", true);
+    add(BuffType::SHIELD_BOOST, "符文圆盾", "最大护盾 +2，并立即补满");
+    add(BuffType::MOVE_SPEED_BOOST, "风行鞋", "移动速度 +8%");
+    add(BuffType::ARMOR_PLATING, "黄铜甲片", "护甲 +1，适合近战压血线");
+    add(BuffType::CRIT_BOOST, "幸运撞针", "当前武器暴击率 +10%");
+    add(BuffType::FIRE_RATE_BOOST, "齿轮扳机", "当前武器射速 +12%");
+    add(BuffType::ENERGY_SAVER, "节能线圈", "当前武器蓝耗 -1，最低为 0");
+    add(BuffType::EXTRA_PROJECTILE, "分裂棱镜", "当前武器弹丸数 +1");
+    add(BuffType::POTION_MASTERY, "药剂腰带", "药水恢复量提升");
+    add(BuffType::BOSS_HUNTER, "猎首刻印", "当前武器伤害 +2，但只在Boss后出现");
+    add(BuffType::TREASURE_INSTINCT, "寻宝罗盘", "后续宝箱更容易出高阶武器");
 
     printf("[BuffManager] Initialized %zu buff definitions.\n", m_buffDefinitions.size());
 }
@@ -48,8 +58,8 @@ std::vector<BuffData*> BuffManager::RollRandomBuffs(int count) {
     int currentLevel = GameManager::GetInstance().GetCurrentLevel();
     for (auto& b : m_buffDefinitions) {
         if (!HasBuff(b.type) && !b.isConsumed) {
-            // 冰盾只在前两关出现
-            if (b.type == BuffType::ICE_SHIELD && currentLevel > 2) continue;
+            if (b.type == BuffType::ICE_SHIELD && currentLevel >= 6) continue;
+            if (b.type == BuffType::BOSS_HUNTER && currentLevel < 3) continue;
             available.push_back(&b);
         }
     }
@@ -76,51 +86,107 @@ void BuffManager::ApplyBuff(BuffType type, Player* player) {
     switch (type) {
         case BuffType::HP_BOOST:
             if (player) {
-                player->SetMaxHP(player->GetMaxHP() + 4);
+                player->SetMaxHP(player->GetMaxHP() + 3);
                 player->SetHP(player->GetMaxHP());  // 回满血
             }
-            b.name = "生命强化";
             break;
         case BuffType::MP_BOOST:
             if (player) {
-                player->SetMaxMP(player->GetMaxMP() + 50);
+                player->SetMaxMP(player->GetMaxMP() + 60);
                 player->SetMP(player->GetMaxMP());  // 回满蓝
             }
-            b.name = "能量强化";
             break;
-        case BuffType::FIRE_SHIELD:  m_hasFireShield = true;  b.name = "火盾"; break;
-        case BuffType::ICE_SHIELD:   m_hasIceShield = true;   b.name = "冰盾"; break;
-        case BuffType::BLOODTHIRST:  m_hasBloodthirst = true; b.name = "嗜血"; break;
-        case BuffType::CD_REDUCTION: m_hasCDReduction = true; b.name = "CD缩减";
-            if (player) player->ReduceSkillCooldown(0.40f);
+        case BuffType::FIRE_SHIELD:  m_hasFireShield = true;  break;
+        case BuffType::ICE_SHIELD:   m_hasIceShield = true;   break;
+        case BuffType::BLOODTHIRST:  m_hasBloodthirst = true; break;
+        case BuffType::CD_REDUCTION: m_hasCDReduction = true;
+            if (player) player->ReduceSkillCooldown(0.30f);
             break;
-        case BuffType::SPREAD_INCREASE: m_hasSpreadIncrease = true; b.name = "散弹增加";
+        case BuffType::SPREAD_INCREASE: m_hasSpreadIncrease = true;
             if (player) {
                 for (int i = 0; i < player->GetWeaponCount(); ++i) {
                     Weapon* w = player->GetWeapon(i);
-                    if (w && w->GetType() == WeaponType::SHOTGUN) {
-                        w->SetProjectileCount(w->GetProjectileCount() + 2);
+                    if (w && w->GetProjectileCount() > 1) {
+                        w->SetProjectileCount(w->GetProjectileCount() + 1);
                     }
                 }
             }
             break;
-        case BuffType::DAMAGE_BOOST:    m_hasDamageBoost = true;    b.name = "伤害强化";
+        case BuffType::DAMAGE_BOOST:    m_hasDamageBoost = true;
             if (player) {
-                // 给当前武器 +2 伤害
+                for (int i = 0; i < player->GetWeaponCount(); ++i) {
+                    Weapon* w = player->GetWeapon(i);
+                    if (w) w->SetBaseDamage(w->GetBaseDamage() + 1);
+                }
+            }
+            break;
+        case BuffType::GOLD_BONUS:      m_hasGoldBonus = true; break;
+        case BuffType::REVIVE_CHARM:
+            m_hasReviveCharm = true;
+            if (player) player->SetReviveCharm(true);
+            break;
+        case BuffType::SHIELD_BOOST:
+            if (player) {
+                player->SetMaxShield(player->GetMaxShield() + 2);
+                player->SetShield(player->GetMaxShield());
+            }
+            break;
+        case BuffType::MOVE_SPEED_BOOST:
+            if (player) player->SetMoveSpeed(player->GetMoveSpeed() * 1.08f);
+            break;
+        case BuffType::ARMOR_PLATING:
+            if (player) player->SetArmor(player->GetArmor() + 1);
+            break;
+        case BuffType::CRIT_BOOST:
+            if (player) {
+                for (int i = 0; i < player->GetWeaponCount(); ++i) {
+                    Weapon* w = player->GetWeapon(i);
+                    if (w) w->SetCritChance(w->GetCritChance() + 0.10f);
+                }
+            }
+            break;
+        case BuffType::FIRE_RATE_BOOST:
+            if (player) {
+                for (int i = 0; i < player->GetWeaponCount(); ++i) {
+                    Weapon* w = player->GetWeapon(i);
+                    if (w) w->SetFireRate(w->GetFireRate() * 1.12f);
+                }
+            }
+            break;
+        case BuffType::ENERGY_SAVER:
+            if (player) {
+                for (int i = 0; i < player->GetWeaponCount(); ++i) {
+                    Weapon* w = player->GetWeapon(i);
+                    if (w) w->SetMPCost(w->GetMPCost() - 1);
+                }
+            }
+            break;
+        case BuffType::EXTRA_PROJECTILE:
+            if (player) {
+                for (int i = 0; i < player->GetWeaponCount(); ++i) {
+                    Weapon* w = player->GetWeapon(i);
+                    if (w) w->SetProjectileCount(w->GetProjectileCount() + 1);
+                }
+            }
+            break;
+        case BuffType::POTION_MASTERY:
+            m_hasPotionMastery = true;
+            break;
+        case BuffType::BOSS_HUNTER:
+            m_hasBossHunter = true;
+            if (player) {
                 for (int i = 0; i < player->GetWeaponCount(); ++i) {
                     Weapon* w = player->GetWeapon(i);
                     if (w) w->SetBaseDamage(w->GetBaseDamage() + 2);
                 }
             }
             break;
-        case BuffType::GOLD_BONUS:      m_hasGoldBonus = true;      b.name = "金币加成"; break;
-        case BuffType::REVIVE_CHARM:
-            m_hasReviveCharm = true;
-            if (player) player->SetReviveCharm(true);
-            b.name = "复活十字章";
+        case BuffType::TREASURE_INSTINCT:
+            m_hasTreasureInstinct = true;
             break;
     }
 
+    b.name = GetBuffName(type);
     m_activeBuffs.push_back(b);
     printf("[BuffManager] Buff applied: %s\n", GetBuffName(type));
 }
@@ -142,6 +208,9 @@ void BuffManager::RemoveBuff(BuffType type, Player* player) {
         case BuffType::DAMAGE_BOOST:    m_hasDamageBoost = false;    break;
         case BuffType::GOLD_BONUS:      m_hasGoldBonus = false; break;
         case BuffType::REVIVE_CHARM:    m_hasReviveCharm = false; break;
+        case BuffType::POTION_MASTERY:  m_hasPotionMastery = false; break;
+        case BuffType::BOSS_HUNTER:      m_hasBossHunter = false; break;
+        case BuffType::TREASURE_INSTINCT:m_hasTreasureInstinct = false; break;
         default: break;
     }
 }
@@ -169,32 +238,52 @@ void BuffManager::ConsumeBuff(BuffType type, Player* player) {
 
 const char* BuffManager::GetBuffName(BuffType type) {
     switch (type) {
-        case BuffType::HP_BOOST:       return "生命强化";
-        case BuffType::MP_BOOST:       return "能量强化";
-        case BuffType::FIRE_SHIELD:    return "火盾";
-        case BuffType::ICE_SHIELD:     return "冰盾";
-        case BuffType::BLOODTHIRST:    return "嗜血";
-        case BuffType::CD_REDUCTION:   return "CD缩减";
-        case BuffType::SPREAD_INCREASE: return "散弹增加";
-        case BuffType::DAMAGE_BOOST:   return "伤害强化";
-        case BuffType::GOLD_BONUS:     return "金币加成";
-        case BuffType::REVIVE_CHARM:   return "复活十字章";
+        case BuffType::HP_BOOST:       return "树心护符";
+        case BuffType::MP_BOOST:       return "蓝晶电池";
+        case BuffType::FIRE_SHIELD:    return "熔火靴";
+        case BuffType::ICE_SHIELD:     return "霜纹披肩";
+        case BuffType::BLOODTHIRST:    return "红月契约";
+        case BuffType::CD_REDUCTION:   return "快手护腕";
+        case BuffType::SPREAD_INCREASE: return "扩容弹巢";
+        case BuffType::DAMAGE_BOOST:   return "磨刃核心";
+        case BuffType::GOLD_BONUS:     return "商会印章";
+        case BuffType::REVIVE_CHARM:   return "余烬吊坠";
+        case BuffType::SHIELD_BOOST:   return "符文圆盾";
+        case BuffType::MOVE_SPEED_BOOST:return "风行鞋";
+        case BuffType::ARMOR_PLATING:  return "黄铜甲片";
+        case BuffType::CRIT_BOOST:     return "幸运撞针";
+        case BuffType::FIRE_RATE_BOOST:return "齿轮扳机";
+        case BuffType::ENERGY_SAVER:   return "节能线圈";
+        case BuffType::EXTRA_PROJECTILE:return "分裂棱镜";
+        case BuffType::POTION_MASTERY: return "药剂腰带";
+        case BuffType::BOSS_HUNTER:    return "猎首刻印";
+        case BuffType::TREASURE_INSTINCT:return "寻宝罗盘";
         default: return "未知";
     }
 }
 
 const char* BuffManager::GetBuffDescription(BuffType type) {
     switch (type) {
-        case BuffType::HP_BOOST:       return "最大生命值 +4";
-        case BuffType::MP_BOOST:       return "最大能量 +50";
-        case BuffType::FIRE_SHIELD:    return "免疫火焰，爆炸+50%";
+        case BuffType::HP_BOOST:       return "最大生命 +3，并立即回满";
+        case BuffType::MP_BOOST:       return "最大能量 +60，并立即回满";
+        case BuffType::FIRE_SHIELD:    return "免疫火焰地面，爆炸范围提升";
         case BuffType::ICE_SHIELD:     return "冰伤减半，免疫减速";
         case BuffType::BLOODTHIRST:    return "击杀回复 1 HP";
-        case BuffType::CD_REDUCTION:   return "技能CD -40%";
-        case BuffType::SPREAD_INCREASE: return "霰弹枪子弹+2";
-        case BuffType::DAMAGE_BOOST:   return "所有武器伤害+2";
-        case BuffType::GOLD_BONUS:     return "金币翻倍，商店8折";
+        case BuffType::CD_REDUCTION:   return "技能冷却 -30%";
+        case BuffType::SPREAD_INCREASE: return "多弹武器额外 +1 发";
+        case BuffType::DAMAGE_BOOST:   return "当前武器伤害 +1";
+        case BuffType::GOLD_BONUS:     return "金币 +60%，商店85折";
         case BuffType::REVIVE_CHARM:   return "自动复活一次";
+        case BuffType::SHIELD_BOOST:   return "最大护盾 +2，并立即补满";
+        case BuffType::MOVE_SPEED_BOOST:return "移动速度 +8%";
+        case BuffType::ARMOR_PLATING:  return "护甲 +1";
+        case BuffType::CRIT_BOOST:     return "当前武器暴击率 +10%";
+        case BuffType::FIRE_RATE_BOOST:return "当前武器射速 +12%";
+        case BuffType::ENERGY_SAVER:   return "当前武器蓝耗 -1";
+        case BuffType::EXTRA_PROJECTILE:return "当前武器弹丸数 +1";
+        case BuffType::POTION_MASTERY: return "药水恢复量提升";
+        case BuffType::BOSS_HUNTER:    return "当前武器伤害 +2";
+        case BuffType::TREASURE_INSTINCT:return "宝箱更容易出高阶武器";
         default: return "";
     }
 }
@@ -213,5 +302,8 @@ void BuffManager::Reset() {
     m_hasDamageBoost = false;
     m_hasGoldBonus = false;
     m_hasReviveCharm = false;
+    m_hasPotionMastery = false;
+    m_hasBossHunter = false;
+    m_hasTreasureInstinct = false;
     printf("[BuffManager] All buffs reset.\n");
 }

@@ -1,6 +1,8 @@
 {
     "c-cpp-compile-run.output-location": "output",
     "c-cpp-compile-run.mirror-output-location": true,
+    "c-cpp-compile-run.cpp-flags": "-Wall -Wextra -g3 -finput-charset=UTF-8 -fexec-charset=UTF-8",
+    "c-cpp-compile-run.c-flags": "-Wall -Wextra -g3 -finput-charset=UTF-8 -fexec-charset=UTF-8",
     "latex-workshop.latex.recipe.default": "xelatex x2",
     "latex-workshop.latex.tools": [
         {

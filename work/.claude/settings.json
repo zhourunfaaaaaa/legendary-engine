@@ -6,8 +6,12 @@
       "Write(*)",
       "Edit",
       "Glob",
-      "Grep"
+      "Grep",
+      "WebSearch",
+      "WebFetch(*)",
+      "Agent(*)",
+      "Skill(*)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "bypassPermissions"
   }
 }

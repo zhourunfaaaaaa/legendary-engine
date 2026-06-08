@@ -12,13 +12,16 @@
 // ============================================================
 
 // ---------- 窗口与渲染常量 ----------
-constexpr int   WINDOW_WIDTH        = 1280;
-constexpr int   WINDOW_HEIGHT       = 720;
+constexpr int   WINDOW_WIDTH        = 1600;
+constexpr int   WINDOW_HEIGHT       = 900;
 constexpr int   TILE_SIZE           = 64;
 constexpr int   ROOM_COLS           = 7;
 constexpr int   ROOM_ROWS           = 7;
-constexpr int   ROOM_WIDTH          = 960;
-constexpr int   ROOM_HEIGHT         = 640;
+constexpr int   ROOM_WIDTH          = 1200;
+constexpr int   ROOM_HEIGHT         = 800;
+constexpr float ROOM_WALL_MARGIN    = 54.0f;
+constexpr float ROOM_ENTITY_MARGIN  = 68.0f;
+constexpr float ROOM_BOSS_MARGIN    = 88.0f;
 constexpr float PI                  = 3.14159265358979323846f;
 
 // ---------- 游戏状态机 ----------
@@ -58,6 +61,7 @@ enum class RoomType {
     SHOP,                // 商店房
     BOSS,                // Boss 房
     START,               // 初始房
+    EXIT,                // 小关出口房
     EMPTY                // 空（用于填充地图）
 };
 
@@ -79,7 +83,30 @@ enum class WeaponType {
     FLAME_THROWER,
     MAGIC_STAFF,
     REBOUND_CROSSBOW,
-    VAMPIRE_CODEX
+    VAMPIRE_CODEX,
+    BURST_SMG,
+    HAND_CANNON,
+    FROST_PISTOL,
+    SPARK_CARBINE,
+    BONE_BOW,
+    TOXIC_SPRAYER,
+    CHAIN_BLASTER,
+    ARCANE_ORB,
+    CRYSTAL_LASER,
+    THUNDER_RAIL,
+    DRAGON_SHOTGUN,
+    PLASMA_RIFLE,
+    VOID_LAUNCHER,
+    STORM_STAFF,
+    PHOENIX_CROSSBOW,
+    BLOOD_SCYTHE,
+    STAR_CANNON,
+    GLACIER_MINIGUN,
+    METEOR_ROD,
+    SUNFIRE_SPEAR,
+    SHADOW_CODEX,
+    EMPEROR_RIFLE,
+    COUNT
 };
 
 // ---------- 子弹归属 ----------
@@ -116,7 +143,17 @@ enum class BuffType {
     SPREAD_INCREASE,     // 散弹增加
     DAMAGE_BOOST,        // 伤害强化
     GOLD_BONUS,          // 金币加成
-    REVIVE_CHARM         // 复活十字章
+    REVIVE_CHARM,        // 复活十字章
+    SHIELD_BOOST,
+    MOVE_SPEED_BOOST,
+    ARMOR_PLATING,
+    CRIT_BOOST,
+    FIRE_RATE_BOOST,
+    ENERGY_SAVER,
+    EXTRA_PROJECTILE,
+    POTION_MASTERY,
+    BOSS_HUNTER,
+    TREASURE_INSTINCT
 };
 
 // ---------- 掉落物类型 ----------
@@ -131,6 +168,7 @@ enum class DropType {
 enum class ObstacleType {
     TREE,                // 森林：树木
     ICE_PATCH,           // 冰原：冰块
+    ICE_BLOCK,           // 冰原：阻挡冰晶
     LAVA_POOL            // 熔岩：岩浆池
 };
 

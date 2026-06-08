@@ -29,7 +29,9 @@ public:
     virtual const char* GetDescription() const { return ""; }
 
     int  GetMPCost() const { return m_mpCost; }
+    void SetMPCost(int cost) { m_mpCost = cost < 0 ? 0 : cost; }
     float GetFireRate() const { return m_fireRate; }    // 每秒射速
+    void SetFireRate(float rate) { m_fireRate = rate > 0.1f ? rate : 0.1f; }
     float GetCooldownRemaining() const { return m_cooldownTimer; }
     bool  IsOnCooldown() const { return m_cooldownTimer > 0.0f; }
 
@@ -55,6 +57,7 @@ public:
 
     // 价格（商店）
     int   GetPrice() const { return m_price; }
+    void  SetShooterForwardSpeed(float speed) { m_shooterForwardSpeed = speed > 0.0f ? speed : 0.0f; }
 
     // 射速修改（骑士技能 / buff）
     void  SetFireRateMultiplier(float mult) { m_fireRateMultiplier = mult; }
@@ -77,4 +80,5 @@ protected:
     int     m_projectileCount;   // 每次开火子弹数
     int     m_level;             // 武器等级
     int     m_price;             // 商店价格
+    float   m_shooterForwardSpeed;
 };

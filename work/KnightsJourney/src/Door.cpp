@@ -3,6 +3,7 @@
 // ============================================================
 
 #include "../include/Entity/Door.h"
+#include "../include/Graphics/VisualEffects.h"
 #include <graphics.h>
 
 Door::Door()
@@ -21,15 +22,25 @@ void Door::Render() {
     int cx = (int)m_position.x;
     int cy = (int)m_position.y;
 
-    COLORREF frameColor = m_isLocked ? RGB(120, 30, 30) : (m_isOpen ? RGB(60, 200, 60) : RGB(180, 180, 80));
-    setfillcolor(frameColor);
-    solidrectangle(cx - 14, cy - 20, cx + 14, cy + 20);
+    COLORREF frameColor = m_isLocked ? RGB(164, 62, 57) : (m_isOpen ? RGB(74, 178, 104) : RGB(205, 166, 72));
+    COLORREF innerColor = m_isOpen ? RGB(26, 81, 49) : RGB(87, 55, 32);
 
-    setfillcolor(m_isOpen ? RGB(20, 50, 20) : RGB(50, 30, 10));
-    solidrectangle(cx - 10, cy - 16, cx + 10, cy + 16);
+    VisualFX::DrawPixelShadow(cx, cy + 26, 24, 10);
+    VisualFX::DrawPixelRect(cx - 24, cy - 28, cx + 24, cy + 28,
+                            frameColor, RGB(10, 12, 14), 5);
+    VisualFX::DrawPixelRect(cx - 14, cy - 18, cx + 14, cy + 20,
+                            innerColor, RGB(30, 24, 20), 4);
+
+    if (m_isLocked) {
+        VisualFX::DrawPixelRect(cx - 7, cy - 2, cx + 7, cy + 12,
+                                RGB(211, 176, 65), RGB(42, 30, 12), 3);
+    } else if (m_isOpen) {
+        setfillcolor(RGB(123, 229, 137));
+        solidrectangle(cx - 5, cy - 19, cx + 5, cy - 12);
+    }
 
     // 方向箭头
-    setfillcolor(RGB(255, 255, 200));
+    setfillcolor(m_isLocked ? RGB(255, 178, 178) : RGB(255, 245, 180));
     switch (m_direction) {
         case DoorDirection::NORTH: solidrectangle(cx - 4, cy - 12, cx + 4, cy - 2); solidcircle(cx, cy - 13, 3); break;
         case DoorDirection::SOUTH: solidrectangle(cx - 4, cy + 2, cx + 4, cy + 12); solidcircle(cx, cy + 13, 3); break;

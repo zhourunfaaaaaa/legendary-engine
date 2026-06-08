@@ -31,8 +31,10 @@ public:
     void CheckPlayerVsDropItem(EntityManager& entityMgr);
     void CheckPlayerVsChest(EntityManager& entityMgr);
     void CheckEnemyVsPlayer(EntityManager& entityMgr);   // 敌人贴身碰撞伤害
+    void CheckEnemyVsEnemy(EntityManager& entityMgr);
     void CheckEnemyVsObstacle(EntityManager& entityMgr);
     void CheckEnemyVsWall(EntityManager& entityMgr);
+    void CheckDropItemSeparation(EntityManager& entityMgr);
 
     // AABB vs AABB
     static bool AABBIntersects(const AABB& a, const AABB& b);

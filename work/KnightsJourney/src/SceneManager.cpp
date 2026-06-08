@@ -16,6 +16,7 @@
 #include "../include/Entity/Obstacle.h"
 #include "../include/Entity/Chest.h"
 #include "../include/Entity/Door.h"
+#include "../include/Weapon/WeaponTypes.h"
 
 #include "../include/Core/GameManager.h"
 
@@ -121,6 +122,12 @@ void SceneManager::LoadRoom(const RoomCoord& coord, EntityManager& entityMgr) {
             break;
 
         case RoomType::ELITE:
+            CloseAllDoors(entityMgr);
+            SpawnObstacles(entityMgr);
+            SpawnEliteEnemies(*room, entityMgr);
+            break;
+
+        case RoomType::EXIT:
             CloseAllDoors(entityMgr);
             SpawnObstacles(entityMgr);
             SpawnEliteEnemies(*room, entityMgr);
@@ -294,11 +301,7 @@ void SceneManager::Update(float deltaTime, EntityManager& entityMgr) {
 
             // Boss 房间清除后触发天赋选择（第3关之后直接胜利，不选天赋）
             if (room->type == RoomType::BOSS) {
-                if (GameManager::GetInstance().GetCurrentLevel() >= 3) {
-                    OpenAllDoors(entityMgr);
-                } else {
-                    GameManager::GetInstance().SetState(GameState::TALENT_SELECT);
-                }
+                GameManager::GetInstance().SetState(GameState::TALENT_SELECT);
             } else {
                 // 打开所有门
                 OpenAllDoors(entityMgr);
@@ -335,7 +338,9 @@ void SceneManager::SpawnNextWave(EntityManager& entityMgr) {
            room->coord.col, room->coord.row);
 
     int enemyCount = 0;
-    int levelScale = m_currentLevel;  // 关卡越高敌人越多
+    int stageInBiome = ((m_currentLevel - 1) % 3) + 1;
+    int biomeDepth = (m_currentLevel - 1) / 3;
+    int levelScale = stageInBiome + biomeDepth;  // 每张地图内递增，后期地图再整体上浮
     switch (room->type) {
         case RoomType::NORMAL:
             enemyCount = RandomInt(2, 4) + (levelScale - 1);  // Lv1:2-4 Lv2:3-5 Lv3:4-6
@@ -343,12 +348,18 @@ void SceneManager::SpawnNextWave(EntityManager& entityMgr) {
         case RoomType::ELITE:
             enemyCount = RandomInt(3, 5) + (levelScale - 1);  // Lv1:3-5 Lv2:4-6 Lv3:5-7
             break;
+        case RoomType::EXIT:
+            enemyCount = RandomInt(4, 6) + (levelScale - 1);
+            break;
         case RoomType::BOSS:
             enemyCount = 0;  // Boss 单独生成
             break;
         default:
             enemyCount = 0;
             break;
+    }
+    if (m_currentBiome == BiomeType::ICE_DUNGEON && room->type != RoomType::BOSS) {
+        enemyCount += 1;
     }
 
     Player* player = GameManager::GetInstance().GetPlayer();
@@ -420,13 +431,12 @@ Enemy* SceneManager::SpawnEnemy(const Vector2& position, EntityManager& entityMg
     Enemy* enemy = CreateRandomEnemyForBiome(m_currentBiome, isElite);
     if (!enemy) return nullptr;
 
-    // 关卡越高敌人血量越多（Lv2: +30%, Lv3: +70%）
-    if (m_currentLevel >= 3) {
-        int boostedHP = static_cast<int>(enemy->GetMaxHP() * 1.7f);
-        enemy->SetMaxHP(boostedHP);
-        enemy->SetHP(boostedHP);
-    } else if (m_currentLevel >= 2) {
-        int boostedHP = static_cast<int>(enemy->GetMaxHP() * 1.3f);
+    // 关卡越高敌人血量越多：每个地图三小关递增，同时冰原/火山有整体难度抬升
+    int stageInBiome = ((m_currentLevel - 1) % 3) + 1;
+    int biomeDepth = (m_currentLevel - 1) / 3;
+    float hpScale = 1.0f + (stageInBiome - 1) * 0.22f + biomeDepth * 0.26f;
+    if (hpScale > 1.01f) {
+        int boostedHP = static_cast<int>(enemy->GetMaxHP() * hpScale);
         enemy->SetMaxHP(boostedHP);
         enemy->SetHP(boostedHP);
     }
@@ -455,29 +465,32 @@ Enemy* SceneManager::CreateRandomEnemyForBiome(BiomeType biome, bool isElite) {
 
     switch (biome) {
         case BiomeType::FOREST: {
-            int roll = RandomInt(0, 2);
+            int roll = RandomInt(0, 3);
             switch (roll) {
                 case 0: enemy = new GoblinMelee();    break;
                 case 1: enemy = new GoblinArcher();   break;
                 case 2: enemy = new ChargeBoar();     break;
+                case 3: enemy = new ForestWisp();     break;
             }
             break;
         }
         case BiomeType::ICE_DUNGEON: {
-            int roll = RandomInt(0, 2);
+            int roll = RandomInt(0, 3);
             switch (roll) {
                 case 0: enemy = new IceSlime();       break;
                 case 1: enemy = new Snowman();        break;
                 case 2: enemy = new IceMage();        break;
+                case 3: enemy = new FrostScout();     break;
             }
             break;
         }
         case BiomeType::VOLCANO: {
-            int roll = RandomInt(0, 2);
+            int roll = RandomInt(0, 3);
             switch (roll) {
                 case 0: enemy = new LavaWorm();       break;
                 case 1: enemy = new FireKnight();     break;
                 case 2: enemy = new ExplosiveBat();   break;
+                case 3: enemy = new EmberImp();       break;
             }
             break;
         }
@@ -514,8 +527,12 @@ void SceneManager::SpawnObstacles(EntityManager& entityMgr) {
                 obs = new Tree();
                 break;
             case BiomeType::ICE_DUNGEON:
-                obs = new IcePatch();
+            {
+                int marker = ((int)pos.x * 31 + (int)pos.y * 17 + m_currentLevel * 13) % 100;
+                obs = marker < 58 ? static_cast<Obstacle*>(new IceBlock())
+                                  : static_cast<Obstacle*>(new IcePatch());
                 break;
+            }
             case BiomeType::VOLCANO:
                 obs = new LavaPool();
                 break;
@@ -523,6 +540,9 @@ void SceneManager::SpawnObstacles(EntityManager& entityMgr) {
 
         if (obs) {
             obs->SetPosition(pos);
+            if (LavaPool* lava = dynamic_cast<LavaPool*>(obs)) {
+                lava->SetLifetime(99999.0f);
+            }
             obs->SyncAABBToPosition();
             entityMgr.RegisterEntity(std::unique_ptr<Obstacle>(obs));
         }
@@ -616,9 +636,10 @@ Chest* SceneManager::SpawnChest(const Vector2& position, EntityManager& entityMg
     chest->SetPosition(position);
     chest->SetSourceRoom(sourceRoom);
 
-    // 所有宝箱固定掉落武器
-    int weaponRoll = RandomInt(0, 7);
-    chest->SetAsWeaponDrop(static_cast<WeaponType>(weaponRoll));
+    int rollLevel = m_currentLevel;
+    if (GameManager::GetInstance().GetBuffManager().HasTreasureInstinct()) rollLevel += 3;
+    WeaponType weaponRoll = RollWeaponByTier(rollLevel, false);
+    chest->SetAsWeaponDrop(weaponRoll);
     (void)sourceRoom;
 
     chest->SyncAABBToPosition();
@@ -643,64 +664,49 @@ void SceneManager::SpawnShopItems(const Vector2& position, EntityManager& entity
         return;
     }
 
-    BuffManager& buffs = gm.GetBuffManager();
     Player* player = gm.GetPlayer();
 
     std::vector<ShopItemData> items;
 
-    // 随机 2 把武器（排除玩家已有的武器类型）
-    WeaponType allWeapons[] = {
-        WeaponType::ASSAULT_RIFLE, WeaponType::SHOTGUN,
-        WeaponType::SNIPER_RIFLE, WeaponType::ROCKET_LAUNCHER,
-        WeaponType::FLAME_THROWER, WeaponType::MAGIC_STAFF,
-        WeaponType::REBOUND_CROSSBOW, WeaponType::VAMPIRE_CODEX
-    };
-    int weaponPool[8];
-    int poolSize = 0;
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 2; ++i) {
+        WeaponType wt = RollWeaponByTier(m_currentLevel, true);
+        for (int attempt = 0; attempt < 12; ++attempt) {
+            bool duplicateInShop = false;
+            for (const auto& existing : items) {
+                if (existing.itemType == ShopItemType::WEAPON && existing.weaponType == wt) {
+                    duplicateInShop = true;
+                    break;
+                }
+            }
+            if (!duplicateInShop) break;
+            wt = RollWeaponByTier(m_currentLevel, true);
+        }
+
         bool alreadyOwned = false;
         if (player) {
             for (int s = 0; s < player->GetWeaponCount(); ++s) {
                 Weapon* w = player->GetWeapon(s);
-                if (w && w->GetType() == allWeapons[i]) { alreadyOwned = true; break; }
+                if (w && w->GetType() == wt) { alreadyOwned = true; break; }
             }
         }
-        if (!alreadyOwned) { weaponPool[poolSize++] = i; }
-    }
-
-    for (int i = 0; i < 2 && poolSize > 0; ++i) {
-        int idx = RandomInt(0, poolSize - 1);
-        WeaponType wt = allWeapons[weaponPool[idx]];
-        weaponPool[idx] = weaponPool[--poolSize];
+        if (alreadyOwned) wt = RollWeaponByTier(m_currentLevel, true);
 
         ShopItemData item;
         item.itemType = ShopItemType::WEAPON;
         item.weaponType = wt;
         item.isSold = false;
-        switch (wt) {
-            case WeaponType::ASSAULT_RIFLE:   item.name = "突击步枪"; item.price = 50;  break;
-            case WeaponType::SHOTGUN:         item.name = "霰弹枪";   item.price = 60;  break;
-            case WeaponType::SNIPER_RIFLE:    item.name = "狙击枪";   item.price = 80;  break;
-            case WeaponType::ROCKET_LAUNCHER: item.name = "火箭筒";   item.price = 100; break;
-            case WeaponType::FLAME_THROWER:   item.name = "火焰机枪"; item.price = 70;  break;
-            case WeaponType::MAGIC_STAFF:     item.name = "魔法法杖"; item.price = 60;  break;
-            case WeaponType::REBOUND_CROSSBOW:item.name = "反弹十字弩"; item.price = 60; break;
-            case WeaponType::VAMPIRE_CODEX:   item.name = "吸血鬼法典"; item.price = 80; break;
-            default: item.name = "未知武器"; item.price = 50; break;
-        }
+        item.name = GetWeaponDisplayName(wt);
+        item.price = GetWeaponPrice(wt);
         items.push_back(item);
     }
 
-    // 随机 1 个天赋
-    std::vector<BuffData*> talentOptions = buffs.RollRandomBuffs(1);
-    if (!talentOptions.empty()) {
-        ShopItemData item;
-        item.itemType = ShopItemType::WEAPON;
-        item.name = talentOptions[0]->name;
-        item.price = 80;
-        item.isSold = false;
-        items.push_back(item);
-    }
+    ShopItemData potion;
+    potion.itemType = RandomInt(0, 1) == 0 ? ShopItemType::HP_POTION : ShopItemType::MP_POTION;
+    potion.name = potion.itemType == ShopItemType::HP_POTION ? "急救药水" : "能量药水";
+    potion.value = potion.itemType == ShopItemType::HP_POTION ? 3 : 60;
+    potion.price = potion.itemType == ShopItemType::HP_POTION ? 45 : 38;
+    potion.isSold = false;
+    items.push_back(potion);
 
     // 缓存并标记
     ui->SetCachedShopItems(items);

@@ -65,6 +65,16 @@ public:
 };
 
 // ============================================================
+// IceBlock - 冰晶柱 (Ice Dungeon)，阻挡移动和子弹
+// ============================================================
+class IceBlock : public Obstacle {
+public:
+    IceBlock();
+    virtual void Render() override;
+    virtual const char* GetTypeName() const override { return "IceBlock"; }
+};
+
+// ============================================================
 // LavaPool - 岩浆池 (Volcano)，不阻挡子弹，踩上扣血
 // ============================================================
 class LavaPool : public Obstacle {

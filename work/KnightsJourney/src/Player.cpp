@@ -8,11 +8,150 @@
 #include "../include/System/EntityManager.h"
 #include "../include/System/BuffManager.h"
 #include "../include/Core/GameManager.h"
+#include "../include/Graphics/VisualEffects.h"
 
 #include <graphics.h>
 #include <windows.h>
 #include <cmath>
 #include <cstdio>
+
+namespace {
+
+COLORREF HeldWeaponAccent(WeaponType type) {
+    int tier = GetWeaponTier(type);
+    switch (type) {
+        case WeaponType::ASSAULT_RIFLE:    return RGB(255, 182, 66);
+        case WeaponType::SHOTGUN:          return RGB(255, 212, 67);
+        case WeaponType::SNIPER_RIFLE:     return RGB(238, 94, 232);
+        case WeaponType::ROCKET_LAUNCHER:  return RGB(255, 104, 55);
+        case WeaponType::FLAME_THROWER:    return RGB(255, 139, 42);
+        case WeaponType::MAGIC_STAFF:      return RGB(198, 111, 255);
+        case WeaponType::REBOUND_CROSSBOW: return RGB(132, 180, 255);
+        case WeaponType::VAMPIRE_CODEX:    return RGB(185, 83, 212);
+        default:
+            return tier == 3 ? RGB(255, 216, 104) :
+                   tier == 2 ? RGB(119, 218, 255) :
+                               RGB(230, 220, 180);
+    }
+}
+
+void DrawOrientedQuad(float cx, float cy, const Vector2& dir,
+                      float along, float side, float length, float halfThick,
+                      COLORREF fill, COLORREF outline) {
+    Vector2 d = dir.Normalized();
+    if (d.LengthSquared() < 0.001f) d = Vector2(1.0f, 0.0f);
+    Vector2 p(-d.y, d.x);
+    Vector2 center(cx + d.x * along + p.x * side,
+                   cy + d.y * along + p.y * side);
+    Vector2 a = d * (length * 0.5f);
+    Vector2 b = p * halfThick;
+
+    POINT outer[4] = {
+        { (LONG)(center.x - a.x - b.x - p.x * 2), (LONG)(center.y - a.y - b.y - p.y * 2) },
+        { (LONG)(center.x + a.x - b.x - p.x * 2), (LONG)(center.y + a.y - b.y - p.y * 2) },
+        { (LONG)(center.x + a.x + b.x + p.x * 2), (LONG)(center.y + a.y + b.y + p.y * 2) },
+        { (LONG)(center.x - a.x + b.x + p.x * 2), (LONG)(center.y - a.y + b.y + p.y * 2) }
+    };
+    setfillcolor(outline);
+    solidpolygon(outer, 4);
+
+    POINT inner[4] = {
+        { (LONG)(center.x - a.x - b.x), (LONG)(center.y - a.y - b.y) },
+        { (LONG)(center.x + a.x - b.x), (LONG)(center.y + a.y - b.y) },
+        { (LONG)(center.x + a.x + b.x), (LONG)(center.y + a.y + b.y) },
+        { (LONG)(center.x - a.x + b.x), (LONG)(center.y - a.y + b.y) }
+    };
+    setfillcolor(fill);
+    solidpolygon(inner, 4);
+}
+
+void DrawHeldWeapon(int cx, int cy, const Vector2& aim, WeaponType type) {
+    Vector2 d = aim.Normalized();
+    if (d.LengthSquared() < 0.001f) d = Vector2(1.0f, 0.0f);
+    const WeaponSpec& spec = GetWeaponSpec(type);
+    COLORREF accent = HeldWeaponAccent(type);
+    COLORREF outline = RGB(18, 16, 15);
+    COLORREF metal = RGB(224, 222, 194);
+    COLORREF dark = RGB(48, 48, 54);
+    COLORREF wood = RGB(125, 82, 43);
+
+    DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 8.0f, 4.0f, 18.0f, 4.0f,
+                     RGB(255, 218, 132), outline);
+
+    switch (type) {
+        case WeaponType::SHOTGUN:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 26.0f, 0.0f, 42.0f, 5.0f, dark, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 34.0f, -4.0f, 34.0f, 2.0f, accent, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 34.0f, 4.0f, 34.0f, 2.0f, RGB(255, 232, 112), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 7.0f, 7.0f, 18.0f, 6.0f, wood, outline);
+            break;
+        case WeaponType::ASSAULT_RIFLE:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 25.0f, 0.0f, 40.0f, 5.0f, RGB(63, 72, 78), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 45.0f, 0.0f, 25.0f, 2.5f, accent, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 16.0f, 9.0f, 15.0f, 6.0f, wood, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 2.0f, 0.0f, 18.0f, 7.0f, RGB(78, 66, 55), outline);
+            break;
+        case WeaponType::SNIPER_RIFLE:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 31.0f, 0.0f, 56.0f, 3.5f, RGB(68, 70, 82), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 58.0f, 0.0f, 30.0f, 1.8f, accent, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 21.0f, -8.0f, 18.0f, 4.0f, RGB(155, 218, 255), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 6.0f, 8.0f, 18.0f, 6.0f, wood, outline);
+            break;
+        case WeaponType::ROCKET_LAUNCHER:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 29.0f, 0.0f, 48.0f, 9.0f, RGB(79, 84, 78), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 52.0f, 0.0f, 16.0f, 11.0f, accent, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 10.0f, 9.0f, 16.0f, 5.0f, wood, outline);
+            break;
+        case WeaponType::FLAME_THROWER:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 26.0f, 0.0f, 42.0f, 5.0f, RGB(76, 70, 59), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 47.0f, 0.0f, 22.0f, 3.0f, accent, outline);
+            VisualFX::DrawPixelDiamond(cx + (int)(d.x * 61), cy + 5 + (int)(d.y * 61), 7,
+                                      RGB(255, 207, 69), outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 7.0f, 10.0f, 14.0f, 7.0f, RGB(174, 70, 43), outline);
+            break;
+        case WeaponType::MAGIC_STAFF:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 30.0f, 0.0f, 55.0f, 3.0f, RGB(123, 76, 45), outline);
+            VisualFX::DrawPixelDiamond(cx + (int)(d.x * 58), cy + 5 + (int)(d.y * 58), 12,
+                                      RGB(226, 177, 255), outline);
+            break;
+        case WeaponType::REBOUND_CROSSBOW:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 25.0f, 0.0f, 38.0f, 4.0f, wood, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 34.0f, 0.0f, 8.0f, 18.0f, accent, outline);
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 43.0f, 0.0f, 22.0f, 2.5f, metal, outline);
+            break;
+        case WeaponType::VAMPIRE_CODEX:
+            DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 22.0f, 0.0f, 24.0f, 15.0f, RGB(79, 36, 103), outline);
+            VisualFX::DrawPixelDiamond(cx + (int)(d.x * 32), cy + 5 + (int)(d.y * 32), 7, accent, outline);
+            break;
+        default:
+            if (spec.pattern == WeaponPattern::EXPLOSIVE) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 30.0f, 0.0f, 50.0f, 9.0f, RGB(70, 78, 78), outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 53.0f, 0.0f, 18.0f, 10.0f, accent, outline);
+            } else if (spec.pattern == WeaponPattern::HOMING) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 30.0f, 0.0f, 55.0f, 3.0f, RGB(116, 76, 50), outline);
+                VisualFX::DrawPixelDiamond(cx + (int)(d.x * 58), cy + 5 + (int)(d.y * 58), spec.tier >= 3 ? 14 : 11, accent, outline);
+            } else if (spec.pattern == WeaponPattern::SPREAD) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 27.0f, 0.0f, 42.0f, 5.0f, dark, outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 36.0f, -4.0f, 32.0f, 2.0f, accent, outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 36.0f, 4.0f, 32.0f, 2.0f, RGB(255, 232, 112), outline);
+            } else if (spec.pattern == WeaponPattern::BOUNCE) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 25.0f, 0.0f, 38.0f, 4.0f, wood, outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 34.0f, 0.0f, 8.0f, 18.0f, accent, outline);
+            } else if (spec.pattern == WeaponPattern::CODEX) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 22.0f, 0.0f, 24.0f, 15.0f, RGB(72, 36, 96), outline);
+                VisualFX::DrawPixelDiamond(cx + (int)(d.x * 32), cy + 5 + (int)(d.y * 32), 7, accent, outline);
+            } else if (spec.pattern == WeaponPattern::LASER) {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 32.0f, 0.0f, 58.0f, 3.0f, RGB(58, 66, 76), outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 59.0f, 0.0f, 30.0f, 1.8f, accent, outline);
+            } else {
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 26.0f, 0.0f, 42.0f, 5.0f, RGB(61, 70, 76), outline);
+                DrawOrientedQuad((float)cx, (float)cy + 5.0f, d, 46.0f, 0.0f, 25.0f, 2.4f, accent, outline);
+            }
+            break;
+    }
+}
+
+} // namespace
 
 // ============================================================
 // 构造 / 析构
@@ -31,7 +170,7 @@ Player::Player()
     , m_firstShotAfterRoll(false)
     , m_rollDirection(0.0f, 0.0f)
     , m_rollTimer(0.0f)
-    , m_rollDistance(150.0f)
+    , m_rollDistance(190.0f)
     , m_lightningVfxTimer(0.0f)
     , m_aimDirection(1.0f, 0.0f)
     , m_aimAngle(0.0f)
@@ -85,7 +224,7 @@ void Player::InitProfession(Profession prof) {
             SetArmor(0);
             SetMaxShield(2);                 // 游侠护盾
             SetShield(2);
-            m_skillCooldown = 3.0f;          // 翻滚冷却 3 秒
+            m_skillCooldown = 2.0f;          // 翻滚冷却 2 秒
             break;
 
         case Profession::MAGE:
@@ -93,7 +232,7 @@ void Player::InitProfession(Profession prof) {
             SetHP(4);
             SetMaxMP(250);
             SetMP(250);
-            SetMoveSpeed(180.0f);            // 慢速
+            SetMoveSpeed(185.0f);            // 慢速
             SetArmor(0);
             SetMaxShield(3);                 // 法师护盾
             SetShield(3);
@@ -152,10 +291,10 @@ void Player::Update(float deltaTime) {
 
     // 7. 边界限制（房间边界 + 玩家半径）
     const float margin = 18.0f;  // 玩家碰撞半径 + 余量
-    if (m_position.x < margin) m_position.x = margin;
-    if (m_position.y < margin) m_position.y = margin;
-    if (m_position.x > ROOM_WIDTH - margin)  m_position.x = ROOM_WIDTH - margin;
-    if (m_position.y > ROOM_HEIGHT - margin) m_position.y = ROOM_HEIGHT - margin;
+    if (m_position.x < ROOM_ENTITY_MARGIN) m_position.x = ROOM_ENTITY_MARGIN;
+    if (m_position.y < ROOM_ENTITY_MARGIN) m_position.y = ROOM_ENTITY_MARGIN;
+    if (m_position.x > ROOM_WIDTH - ROOM_ENTITY_MARGIN)  m_position.x = ROOM_WIDTH - ROOM_ENTITY_MARGIN;
+    if (m_position.y > ROOM_HEIGHT - ROOM_ENTITY_MARGIN) m_position.y = ROOM_HEIGHT - ROOM_ENTITY_MARGIN;
 
     // 8. 同步碰撞盒
     SyncAABBToPosition();
@@ -175,7 +314,6 @@ void Player::Render() {
     int cx = static_cast<int>(m_position.x);
     int cy = static_cast<int>(m_position.y);
     const int radius = 16;
-    const int lineLen = 24;
 
     // 受伤闪烁效果（无敌帧期间闪烁）
     if (m_damageInvincibleTimer > 0.0f) {
@@ -183,12 +321,6 @@ void Player::Render() {
         if (blink == 0) return;  // 隔帧不绘制，形成闪烁
     }
 
-    // ---- 玩家身体（蓝色圆） ----
-    // 外圈描边（深蓝色）
-    setfillcolor(RGB(20, 40, 120));
-    solidcircle(cx, cy, radius + 2);
-
-    // 主体填充
     COLORREF bodyColor;
     switch (m_profession) {
         case Profession::KNIGHT: bodyColor = RGB(60, 120, 255); break;   // 亮蓝
@@ -196,24 +328,22 @@ void Player::Render() {
         case Profession::MAGE:   bodyColor = RGB(180, 80, 255); break;   // 紫色
         default:                 bodyColor = RGB(60, 120, 255); break;
     }
-    setfillcolor(bodyColor);
-    solidcircle(cx, cy, radius);
 
-    // 中心高光
-    setfillcolor(RGB(140, 180, 255));
-    solidcircle(cx - 3, cy - 3, radius / 3);
+    // ---- 玩家像素身体 ----
+    int w = 34;
+    int h = 40;
+    VisualFX::DrawPixelShadow(cx, cy + h / 2, 19, 8);
+    VisualFX::DrawPixelRect(cx - w / 2, cy - h / 2 + 8, cx + w / 2, cy + h / 2,
+                            bodyColor, RGB(15, 18, 28), 5);
+    VisualFX::DrawPixelRect(cx - 13, cy - h / 2 - 9, cx + 13, cy - h / 2 + 14,
+                            VisualFX::ScaleColor(bodyColor, 1.15f), RGB(15, 18, 28), 5);
+    setfillcolor(RGB(255, 239, 190));
+    solidrectangle(cx - 8, cy - h / 2 - 1, cx - 3, cy - h / 2 + 5);
+    solidrectangle(cx + 3, cy - h / 2 - 1, cx + 8, cy - h / 2 + 5);
 
     // ---- 朝向线段（黄色） ----
-    int tipX = cx + static_cast<int>(m_aimDirection.x * lineLen);
-    int tipY = cy + static_cast<int>(m_aimDirection.y * lineLen);
-
-    setlinestyle(PS_SOLID, 3);
-    setlinecolor(RGB(255, 220, 60));
-    line(cx, cy, tipX, tipY);
-
-    // 准星端点小圆
-    setfillcolor(RGB(255, 240, 100));
-    solidcircle(tipX, tipY, 3);
+    WeaponType heldType = m_currentWeapon ? m_currentWeapon->GetType() : WeaponType::ASSAULT_RIFLE;
+    DrawHeldWeapon(cx, cy, m_aimDirection, heldType);
 
     // 连锁闪电特效
     if (m_lightningVfxTimer > 0.0f && m_lightningChainPositions.size() >= 2) {
@@ -336,20 +466,8 @@ void Player::ProcessMouseInput() {
 // 武器系统
 // ============================================================
 bool Player::EquipWeapon(WeaponType type) {
-    std::unique_ptr<Weapon> newWeapon;
-
-    switch (type) {
-        case WeaponType::ASSAULT_RIFLE:   newWeapon = std::unique_ptr<AssaultRifle>(new AssaultRifle());    break;
-        case WeaponType::SHOTGUN:         newWeapon = std::unique_ptr<Shotgun>(new Shotgun());         break;
-        case WeaponType::SNIPER_RIFLE:    newWeapon = std::unique_ptr<SniperRifle>(new SniperRifle());     break;
-        case WeaponType::ROCKET_LAUNCHER: newWeapon = std::unique_ptr<RocketLauncher>(new RocketLauncher());  break;
-        case WeaponType::FLAME_THROWER:   newWeapon = std::unique_ptr<FlameThrower>(new FlameThrower());    break;
-        case WeaponType::MAGIC_STAFF:     newWeapon = std::unique_ptr<MagicStaff>(new MagicStaff());      break;
-        case WeaponType::REBOUND_CROSSBOW:newWeapon = std::unique_ptr<ReboundCrossbow>(new ReboundCrossbow()); break;
-        case WeaponType::VAMPIRE_CODEX:   newWeapon = std::unique_ptr<VampireCodex>(new VampireCodex());    break;
-        default: return false;
-    }
-
+    if (type == WeaponType::COUNT) return false;
+    std::unique_ptr<Weapon> newWeapon = CreateWeaponByType(type);
     return AddWeapon(std::move(newWeapon));
 }
 
@@ -360,7 +478,7 @@ bool Player::AddWeapon(std::unique_ptr<Weapon> weapon) {
 
     // 如果新武器与某个槽位的武器类型相同，自动放入另一个槽位（同种武器双持）
     for (int i = 0; i < MAX_WEAPON_SLOTS; ++i) {
-        if (m_weapons[i] && m_weapons[i]->GetType() == newType) {
+        if (false && m_weapons[i] && m_weapons[i]->GetType() == newType) {
             int otherSlot = (i == 0) ? 1 : 0;
             printf("[Player] Same weapon type detected in slot %d, equipping to slot %d\n", i, otherSlot);
             m_weapons[otherSlot] = std::move(weapon);
@@ -418,7 +536,18 @@ void Player::FireWeapon() {
     EntityManager& entityMgr = GameManager::GetInstance().GetEntityManager();
 
     // 应用射击精度偏移（若武器有散射角度）
-    Vector2 dir = m_aimDirection;
+    Vector2 dir = m_aimDirection.Normalized();
+    if (dir.LengthSquared() < 0.001f) {
+        dir = Vector2(1.0f, 0.0f);
+    }
+
+    Vector2 fireOrigin = m_position + dir * 34.0f;
+    fireOrigin.x = Clamp(fireOrigin.x, ROOM_WALL_MARGIN + 8.0f, ROOM_WIDTH - ROOM_WALL_MARGIN - 8.0f);
+    fireOrigin.y = Clamp(fireOrigin.y, ROOM_WALL_MARGIN + 8.0f, ROOM_HEIGHT - ROOM_WALL_MARGIN - 8.0f);
+
+    float forwardDot = m_moveDirection.LengthSquared() > 0.001f ? m_moveDirection.Dot(dir) : 0.0f;
+    float inheritedForwardSpeed = Clamp(forwardDot * m_moveSpeed * 0.45f, 0.0f, 130.0f);
+    m_currentWeapon->SetShooterForwardSpeed(inheritedForwardSpeed);
 
     // 游侠翻滚后第一击必暴击
     if (m_firstShotAfterRoll) {
@@ -426,7 +555,7 @@ void Player::FireWeapon() {
         ConsumeFirstShotAfterRoll();
     }
 
-    m_currentWeapon->Fire(m_position, dir, BulletFaction::PLAYER, entityMgr);
+    m_currentWeapon->Fire(fireOrigin, dir, BulletFaction::PLAYER, entityMgr);
 
     // 消耗 MP（火力全开期间双倍耗蓝）
     int mpCost = m_currentWeapon->GetMPCost();
@@ -471,7 +600,7 @@ void Player::UseSkill() {
             }
             m_firstShotAfterRoll = true;
             // 翻滚距离和时间
-            m_rollDistance = 150.0f;
+            m_rollDistance = 190.0f;
             // 使用 SetInvincibleDuration 设置无敌计时器，避免被 UpdateStatusEffects 立即清除
             SetInvincibleDuration(0.35f);
             printf("[Player] Rogue Skill: Tactical Roll!\n");
@@ -562,7 +691,7 @@ void Player::UpdateFullFire(float deltaTime) {
 
 void Player::UpdateRoll(float deltaTime) {
     m_rollTimer += deltaTime;
-    float rollDuration = 0.22f;  // 翻滚动画持续 0.22 秒（更快）
+    float rollDuration = 0.24f;  // 翻滚动画持续 0.24 秒，距离更长但仍保持利落
 
     if (m_rollTimer < rollDuration) {
         // 突进移动

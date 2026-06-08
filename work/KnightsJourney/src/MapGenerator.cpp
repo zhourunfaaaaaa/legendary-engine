@@ -42,8 +42,8 @@ void MapGenerator::GenerateLevel(int level, BiomeType biome) {
         }
     }
 
-    // 根据关卡数决定房间数量（随关卡推进增多）
-    int targetRoomCount = MIN_ROOMS + (level - 1) % 2;  // 4 或 5
+    // 根据关卡数决定房间数量：前期 7 间，后期 8 间，保证完整一层节奏。
+    int targetRoomCount = MIN_ROOMS + (level - 1) % 2;
     if (targetRoomCount > MAX_ROOMS) targetRoomCount = MAX_ROOMS;
 
     printf("[MapGenerator] Generating Level %d (Biome %d), target rooms: %d\n",
@@ -77,10 +77,10 @@ void MapGenerator::GenerateLevel(int level, BiomeType biome) {
 }
 
 // ============================================================
-// 生成网状地图：7-8 个房间，主路径 + 侧分支 + 额外连接
-// 布局：START → NORMAL/ELITE → ... → BOSS（主路径）
-//       + SHOP、REWARD 挂载在主路径侧分支上
-// 目标：4-5 战斗房 + 1 宝箱房 + 1 商店 + 1 Boss
+// 生成网状地图：7-8 个房间，主路径 + 中后段侧分支 + 额外连接
+// 布局：START → NORMAL → NORMAL/ELITE → ... → BOSS（主路径）
+//       + SHOP、REWARD 挂载在主路径中后段，避免开局过早出现
+// 目标：3-4 战斗房 + 1 精英房 + 1 宝箱房 + 1 商店 + 1 Boss
 // 方向权重均衡，避免太直的路线；后期 AddExtraConnections 加环
 // ============================================================
 void MapGenerator::GenerateRoomGraph(int targetRoomCount) {
@@ -105,7 +105,8 @@ void MapGenerator::GenerateRoomGraph(int targetRoomCount) {
     int roomCount = 1;
 
     // ---- 主路径：随机游走，方向权重均衡 ----
-    int mainCombat = RandomInt(4, 5);
+    int mainCombat = targetRoomCount - 3; // 扣除 START、SHOP、REWARD、BOSS 后的主路径战斗段
+    if (mainCombat < 3) mainCombat = 3;
     int goalMainPath = mainCombat + 1; // +1 给 BOSS
 
     RoomCoord prev = m_startRoom;
@@ -155,9 +156,10 @@ void MapGenerator::GenerateRoomGraph(int targetRoomCount) {
         RoomData room;
         room.coord = RoomCoord(nc, nr);
 
+        int stageInBiome = ((m_level - 1) % 3) + 1;
         if (step == goalMainPath - 1) {
-            room.type = RoomType::BOSS;
-            room.totalWaveCount = 1;
+            room.type = stageInBiome == 3 ? RoomType::BOSS : RoomType::EXIT;
+            room.totalWaveCount = stageInBiome == 3 ? 1 : RandomInt(2, 3);
         } else if (step == goalMainPath - 2) {
             room.type = RoomType::ELITE;
             room.totalWaveCount = RandomInt(2, 3);
@@ -181,23 +183,37 @@ void MapGenerator::GenerateRoomGraph(int targetRoomCount) {
         prev = RoomCoord(nc, nr);
     }
 
-    // ---- 侧分支：SHOP + REWARD（确保成功放置） ----
-    int branchStart = 1;
+    // ---- 侧分支：每张地图3小关共享 1 商店 + 2 宝箱房 ----
+    int branchStart = (std::max)(2, (int)mainPathRooms.size() / 2);
     int branchEnd = (int)mainPathRooms.size() - 2;
     if (branchEnd < branchStart) branchEnd = branchStart;
 
-    RoomType branchTypes[2] = { RoomType::SHOP, RoomType::REWARD };
-    if (RandomInt(0, 1) == 1) {
-        branchTypes[0] = RoomType::REWARD;
-        branchTypes[1] = RoomType::SHOP;
+    static bool planReady[3] = { false, false, false };
+    static int shopStage[3] = { 1, 2, 3 };
+    static int rewardSkipStage[3] = { 3, 1, 2 };
+    int biomeIndex = (m_level - 1) / 3;
+    if (biomeIndex < 0) biomeIndex = 0;
+    if (biomeIndex > 2) biomeIndex = 2;
+    int stageInBiome = ((m_level - 1) % 3) + 1;
+    if (!planReady[biomeIndex]) {
+        shopStage[biomeIndex] = RandomInt(1, 3);
+        rewardSkipStage[biomeIndex] = RandomInt(1, 3);
+        planReady[biomeIndex] = true;
     }
 
-    for (int b = 0; b < 2; ++b) {
+    std::vector<RoomType> branchTypes;
+    if (stageInBiome == shopStage[biomeIndex]) branchTypes.push_back(RoomType::SHOP);
+    if (stageInBiome != rewardSkipStage[biomeIndex]) branchTypes.push_back(RoomType::REWARD);
+    if (branchTypes.size() > 1 && RandomInt(0, 1) == 1) {
+        std::swap(branchTypes[0], branchTypes[1]);
+    }
+
+    for (int b = 0; b < (int)branchTypes.size(); ++b) {
         if (roomCount >= targetRoomCount) break;
 
         // 尝试每个主路径房间作为挂载点（从分散的开始）
         bool placed = false;
-        int firstTry = branchStart + b * ((branchEnd - branchStart) / 2);
+        int firstTry = branchStart + b * ((std::max)(1, branchEnd - branchStart + 1) / 2);
         if (firstTry > branchEnd) firstTry = branchEnd;
 
         for (int attempt = 0; attempt <= (branchEnd - branchStart); ++attempt) {
@@ -238,8 +254,8 @@ void MapGenerator::GenerateRoomGraph(int targetRoomCount) {
 
         if (!placed) {
             printf("[MapGenerator] Could not place branch %d after all attempts\n", b);
-            // 回退：将主路径上的某个 NORMAL 改为此类型
-            for (int i = branchStart; i <= branchEnd; ++i) {
+            // 回退：将主路径中后段的 NORMAL 改为此类型
+            for (int i = branchEnd; i >= branchStart; --i) {
                 RoomData* r = GetRoomMutable(mainPathRooms[i]);
                 if (r && r->type == RoomType::NORMAL) {
                     r->type = branchTypes[b];
@@ -295,7 +311,9 @@ void MapGenerator::AddExtraConnections() {
 
     for (auto& room : m_rooms) {
         // 只处理非 START、非 BOSS 且只有 1 扇门的房间
-        if (room.type == RoomType::START || room.type == RoomType::BOSS)
+        if (room.type == RoomType::START || room.type == RoomType::BOSS ||
+            room.type == RoomType::EXIT ||
+            room.type == RoomType::SHOP || room.type == RoomType::REWARD)
             continue;
         if (room.activeDirections.size() > 1)
             continue;
@@ -408,31 +426,6 @@ void MapGenerator::AssignRoomTypes() {
         }
     }
 
-    // 确保每层至少 1 个商店和 1 个宝箱房
-    if (m_shopRoomCount == 0) {
-        for (auto& room : m_rooms) {
-            if (room.type == RoomType::NORMAL) {
-                room.type = RoomType::SHOP;
-                room.totalWaveCount = 0;
-                m_normalRoomCount--;
-                m_shopRoomCount++;
-                printf("[MapGenerator] Converted NORMAL to SHOP for guarantee\n");
-                break;
-            }
-        }
-    }
-    if (m_rewardRoomCount == 0) {
-        for (auto& room : m_rooms) {
-            if (room.type == RoomType::NORMAL) {
-                room.type = RoomType::REWARD;
-                room.totalWaveCount = 0;
-                m_normalRoomCount--;
-                m_rewardRoomCount++;
-                printf("[MapGenerator] Converted NORMAL to REWARD for guarantee\n");
-                break;
-            }
-        }
-    }
 }
 
 // ============================================================
@@ -445,7 +438,13 @@ void MapGenerator::PlaceBossRoom() {
             return;
         }
     }
-    // 回退：没有预设 BOSS，选最远的非 START 房间
+    for (auto& room : m_rooms) {
+        if (room.type == RoomType::EXIT) {
+            m_bossRoom = room.coord;
+            return;
+        }
+    }
+    // 回退：没有预设终点，选最远的非 START 房间作为出口
     int furthestIdx = -1;
     int maxDist = 0;
     for (int i = 0; i < (int)m_rooms.size(); ++i) {
@@ -455,8 +454,8 @@ void MapGenerator::PlaceBossRoom() {
         if (dist > maxDist) { maxDist = dist; furthestIdx = i; }
     }
     if (furthestIdx >= 0) {
-        m_rooms[furthestIdx].type = RoomType::BOSS;
-        m_rooms[furthestIdx].totalWaveCount = 1;
+        m_rooms[furthestIdx].type = RoomType::EXIT;
+        m_rooms[furthestIdx].totalWaveCount = RandomInt(2, 3);
         m_bossRoom = m_rooms[furthestIdx].coord;
     }
 }
@@ -480,7 +479,7 @@ void MapGenerator::GenerateObstaclesForRoom(RoomData& room) {
             obstacleCount = RandomInt(3, 6);    // 树木较多
             break;
         case BiomeType::ICE_DUNGEON:
-            obstacleCount = RandomInt(2, 4);    // 冰块适中
+            obstacleCount = RandomInt(5, 8);    // 冰晶柱 + 冰地板，第二地图更有地形压迫
             break;
         case BiomeType::VOLCANO:
             obstacleCount = RandomInt(2, 5);    // 岩浆适中
@@ -489,7 +488,7 @@ void MapGenerator::GenerateObstaclesForRoom(RoomData& room) {
 
     // BOSS 房间减少障碍物
     if (room.type == RoomType::BOSS) {
-        obstacleCount = RandomInt(0, 2);
+        obstacleCount = (m_biome == BiomeType::ICE_DUNGEON) ? RandomInt(2, 4) : RandomInt(0, 2);
     }
 
     const float margin = 100.0f;  // 边缘留空
@@ -648,6 +647,7 @@ void MapGenerator::PrintMap() const {
                     case RoomType::REWARD: typeChar = 'R'; break;
                     case RoomType::SHOP:   typeChar = '$'; break;
                     case RoomType::BOSS:   typeChar = 'B'; break;
+                    case RoomType::EXIT:   typeChar = 'X'; break;
                     default: break;
                 }
                 printf(" %c ", typeChar);
@@ -655,5 +655,5 @@ void MapGenerator::PrintMap() const {
         }
         printf("\n");
     }
-    printf("  S=Start N=Normal E=Elite R=Reward $=Shop B=Boss\n");
+    printf("  S=Start N=Normal E=Elite R=Reward $=Shop B=Boss X=Exit\n");
 }

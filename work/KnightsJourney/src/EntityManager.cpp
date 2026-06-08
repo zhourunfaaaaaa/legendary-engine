@@ -15,6 +15,7 @@
 #include "../include/Entity/Door.h"
 
 #include <graphics.h>
+#include <cmath>
 
 // ============================================================
 // 构造 / 析构
@@ -79,10 +80,16 @@ void EntityManager::ClearAll() {
 // 按渲染层级排序
 // ============================================================
 void EntityManager::SortByRenderLayer() {
-    std::sort(m_entities.begin(), m_entities.end(),
+    std::stable_sort(m_entities.begin(), m_entities.end(),
         [](const std::unique_ptr<GameObject>& a, const std::unique_ptr<GameObject>& b) {
             if (!a || !b) return false;
-            return a->GetRenderLayer() < b->GetRenderLayer();
+            if (a->GetRenderLayer() != b->GetRenderLayer()) {
+                return a->GetRenderLayer() < b->GetRenderLayer();
+            }
+            if (std::fabs(a->GetY() - b->GetY()) > 0.5f) {
+                return a->GetY() < b->GetY();
+            }
+            return a->GetID() < b->GetID();
         });
     m_needsSort = false;
 }
@@ -124,9 +131,7 @@ void EntityManager::UpdateAll(float deltaTime) {
 // 渲染所有实体（按层级排序）
 // ============================================================
 void EntityManager::RenderAll() {
-    if (m_needsSort) {
-        SortByRenderLayer();
-    }
+    SortByRenderLayer();
 
     for (auto& entity : m_entities) {
         if (entity && entity->IsActive() && !entity->IsMarkedForDeletion()) {

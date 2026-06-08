@@ -23,6 +23,7 @@
 
 // UI
 #include "../include/UI/UIManager.h"
+#include "../include/Graphics/VisualEffects.h"
 
 // EasyX
 #include <graphics.h>
@@ -139,6 +140,7 @@ void GameManager::ProcessFrame(float dt) {
 
     ProcessInput();
     Update();
+    CalculateFPS();
     Render();
 }
 
@@ -191,13 +193,14 @@ void GameManager::ProcessInput() {
             }
             escapePrev = escapeNow;
 
-            // 在已清理的 Boss 房间按 Enter 进入下一关
             const RoomData* currentRoom = m_pSceneManager->GetCurrentRoom();
-            if (currentRoom && currentRoom->type == RoomType::BOSS && currentRoom->isCleared) {
+            if (currentRoom &&
+                (currentRoom->type == RoomType::BOSS || currentRoom->type == RoomType::EXIT) &&
+                currentRoom->isCleared) {
                 static bool enterPrev = false;
                 bool enterNow = GetAsyncKeyState(VK_RETURN) & 0x8000;
                 if (enterNow && !enterPrev) {
-                    if (m_currentLevel >= 3) {
+                    if (m_currentLevel >= 9) {
                         GameOver(true);
                     } else {
                         NextLevel();
@@ -262,20 +265,17 @@ void GameManager::ProcessInput() {
                                 cached[result].isSold = true;
                             }
                             if (item.itemType == ShopItemType::WEAPON) {
-                                // 检查是否是天赋（通过名字匹配）
-                                bool isTalent = false;
-                                for (auto& def : m_pBuffManager->GetAllBuffDefs()) {
-                                    if (def.name == item.name) {
-                                        m_pBuffManager->ApplyBuff(def.type, m_pPlayer);
-                                        isTalent = true;
-                                        break;
-                                    }
+                                if (!m_pPlayer->EquipWeapon(item.weaponType)) {
+                                    SetState(GameState::WEAPON_SELECT);
                                 }
-                                if (!isTalent) {
-                                    if (!m_pPlayer->EquipWeapon(item.weaponType)) {
-                                        SetState(GameState::WEAPON_SELECT);
-                                    }
-                                }
+                            } else if (item.itemType == ShopItemType::HP_POTION) {
+                                int heal = item.value > 0 ? item.value : 3;
+                                if (m_pBuffManager->HasPotionMastery()) heal += 1;
+                                m_pPlayer->Heal(heal);
+                            } else if (item.itemType == ShopItemType::MP_POTION) {
+                                int mp = item.value > 0 ? item.value : 60;
+                                if (m_pBuffManager->HasPotionMastery()) mp += 25;
+                                m_pPlayer->SetMP(m_pPlayer->GetMP() + mp);
                             }
                             printf("[Shop] Purchased: %s\n", item.name.c_str());
                         }
@@ -306,8 +306,11 @@ void GameManager::ProcessInput() {
                         BuffType selected = options[result].buffType;
                         m_pBuffManager->ApplyBuff(selected, m_pPlayer);
                     }
-                    // 回到游戏，玩家自行选择何时前往下一关
-                    SetState(GameState::PLAYING);
+                    if (m_currentLevel >= 9) {
+                        GameOver(true);
+                    } else {
+                        SetState(GameState::PLAYING);
+                    }
                 }
             }
             break;
@@ -441,9 +444,12 @@ void GameManager::Render() {
     // 清屏
     cleardevice();
 
-    // 绘制深色背景
-    setfillcolor(RGB(26, 26, 46));
+    // 绘制窗口底色与 HUD 外围背景
+    setfillcolor(RGB(22, 27, 35));
     solidrectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1);
+    setlinecolor(RGB(14, 17, 23));
+    for (int x = ROOM_WIDTH; x < WINDOW_WIDTH; x += 48) line(x, 0, x, WINDOW_HEIGHT - 1);
+    for (int y = ROOM_HEIGHT; y < WINDOW_HEIGHT; y += 48) line(0, y, ROOM_WIDTH, y);
 
     switch (m_currentState) {
         case GameState::MAIN_MENU: {
@@ -459,26 +465,23 @@ void GameManager::Render() {
         case GameState::PLAYING: {
             // 绘制房间背景（根据 Biome 颜色）
             BiomeType biome = m_pSceneManager->GetCurrentBiome();
-            COLORREF roomBg;
-            switch (biome) {
-                case BiomeType::FOREST:   roomBg = RGB(34, 68, 34);  break;  // 森林绿
-                case BiomeType::ICE_DUNGEON: roomBg = RGB(40, 60, 80); break; // 冰原蓝
-                case BiomeType::VOLCANO:  roomBg = RGB(60, 30, 20);  break;  // 熔岩暗红
-                default:                  roomBg = RGB(30, 30, 40);  break;
-            }
-            // 房间区域
-            setfillcolor(roomBg);
-            solidrectangle(0, 0, ROOM_WIDTH - 1, ROOM_HEIGHT - 1);
+            const RoomData* currentRoom = m_pSceneManager->GetCurrentRoom();
+            VisualFX::DrawRoomBackdrop(biome, currentRoom, m_elapsedTime);
 
             // 绘制所有实体
             m_pEntityManager->RenderAll();
 
             // 绘制 HUD（血条、蓝条、小地图、武器栏）
             if (m_pPlayer) {
-                const RoomData* currentRoom = m_pSceneManager->GetCurrentRoom();
                 m_pUIManager->RenderHUD(m_pPlayer, *m_pBuffManager,
                                         m_currentLevel, biome, m_gold,
-                                        currentRoom);
+                                        currentRoom,
+                                        m_pEntityManager->GetActiveEnemyCount());
+                m_pUIManager->RenderMiniMap(m_pSceneManager->GetMap());
+                auto bosses = m_pEntityManager->GetBosses();
+                if (!bosses.empty()) {
+                    m_pUIManager->RenderBossBar(bosses.front());
+                }
             }
             break;
         }
@@ -487,17 +490,12 @@ void GameManager::Render() {
             // 绘制游戏画面（冻结）
             // 先重绘实体，再覆盖暂停遮罩
             BiomeType biome = m_pSceneManager->GetCurrentBiome();
-            COLORREF roomBg = RGB(30, 30, 40);
-            if (biome == BiomeType::FOREST) roomBg = RGB(34, 68, 34);
-            else if (biome == BiomeType::ICE_DUNGEON) roomBg = RGB(40, 60, 80);
-            else if (biome == BiomeType::VOLCANO) roomBg = RGB(60, 30, 20);
-            setfillcolor(roomBg);
-            solidrectangle(0, 0, ROOM_WIDTH - 1, ROOM_HEIGHT - 1);
+            const RoomData* currentRoom = m_pSceneManager->GetCurrentRoom();
+            VisualFX::DrawRoomBackdrop(biome, currentRoom, m_elapsedTime);
             m_pEntityManager->RenderAll();
 
-            // 暗色遮罩（EasyX 不支持 alpha 通道，纯黑色半透明效果用图案填充模拟）
-            setfillcolor(RGB(0, 0, 0));
-            solidrectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1);
+            // 暗色遮罩（用密集线条模拟半透明）
+            VisualFX::DrawDimOverlay(RGB(6, 9, 15), 4);
             setbkmode(TRANSPARENT);
 
             m_pUIManager->RenderPauseMenu();
@@ -520,16 +518,11 @@ void GameManager::Render() {
         case GameState::WEAPON_SELECT: {
             // 绘制游戏画面作背景
             BiomeType biome = m_pSceneManager->GetCurrentBiome();
-            COLORREF roomBg = RGB(30, 30, 40);
-            if (biome == BiomeType::FOREST) roomBg = RGB(34, 68, 34);
-            else if (biome == BiomeType::ICE_DUNGEON) roomBg = RGB(40, 60, 80);
-            else if (biome == BiomeType::VOLCANO) roomBg = RGB(60, 30, 20);
-            setfillcolor(roomBg);
-            solidrectangle(0, 0, ROOM_WIDTH - 1, ROOM_HEIGHT - 1);
+            const RoomData* currentRoom = m_pSceneManager->GetCurrentRoom();
+            VisualFX::DrawRoomBackdrop(biome, currentRoom, m_elapsedTime);
             m_pEntityManager->RenderAll();
             // 暗色遮罩
-            setfillcolor(RGB(0, 0, 0));
-            solidrectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1);
+            VisualFX::DrawDimOverlay(RGB(6, 9, 15), 4);
             m_pUIManager->RenderWeaponSelection(m_pPlayer);
             break;
         }
@@ -537,7 +530,15 @@ void GameManager::Render() {
         case GameState::TALENT_SELECT: {
             // 只在首次进入天赋选择时随机，避免每帧重随
             if (!m_talentsRolled) {
-                m_cachedTalentRolls = m_pBuffManager->RollRandomBuffs(3);
+                std::vector<BuffData*> rolls = m_pBuffManager->RollRandomBuffs(6);
+                m_cachedTalentRolls.clear();
+                for (BuffData* b : rolls) {
+                    if (!b) continue;
+                    if (m_currentLevel >= 6 && b->type == BuffType::ICE_SHIELD) continue;
+                    if (m_cachedTalentRolls.size() < 3) {
+                        m_cachedTalentRolls.push_back(b);
+                    }
+                }
                 m_talentsRolled = true;
 
                 // 将天赋数据传递给 UIManager 构建 UI 选项
@@ -711,8 +712,7 @@ void GameManager::GameOver(bool victory) {
 // 资源管理
 // ============================================================
 BiomeType GameManager::GetCurrentBiome() const {
-    // 3 张地图：Lv1=森林, Lv2=冰原, Lv3=火山
-    int biomeIndex = ((m_currentLevel - 1) % 3);
+    int biomeIndex = ((m_currentLevel - 1) / 3);
     switch (biomeIndex) {
         case 0: return BiomeType::FOREST;
         case 1: return BiomeType::ICE_DUNGEON;

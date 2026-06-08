@@ -26,6 +26,8 @@ public:
 
     float GetSpeed() const { return m_speed; }
     void SetSpeed(float spd) { m_speed = spd; }
+    void SetInheritedForwardSpeed(float spd) { m_inheritedForwardSpeed = spd > 0.0f ? spd : 0.0f; }
+    float GetInheritedForwardSpeed() const { return m_inheritedForwardSpeed; }
 
     void SetDirection(const Vector2& dir) { m_direction = dir.Normalized(); }
     void SetDirection(float angleRad);
@@ -118,6 +120,7 @@ protected:
     BulletFaction m_faction;
     int           m_damage;
     float         m_speed;
+    float         m_inheritedForwardSpeed;
     Vector2       m_direction;
 
     // 特殊弹道属性

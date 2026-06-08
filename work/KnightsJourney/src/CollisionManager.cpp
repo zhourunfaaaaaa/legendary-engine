@@ -24,6 +24,44 @@
 #include <cstdio>
 #include <windows.h>
 
+namespace {
+
+bool PlayerOwnsWeapon(Player* player, WeaponType type) {
+    if (!player) return false;
+    for (int i = 0; i < player->GetWeaponCount(); ++i) {
+        Weapon* weapon = player->GetWeapon(i);
+        if (weapon && weapon->GetType() == type) return true;
+    }
+    return false;
+}
+
+float GetPassiveLifeStealChance(Player* player) {
+    if (!player) return 0.0f;
+    if (PlayerOwnsWeapon(player, WeaponType::SHADOW_CODEX)) return 0.12f;
+    if (PlayerOwnsWeapon(player, WeaponType::BLOOD_SCYTHE)) return 0.10f;
+    if (PlayerOwnsWeapon(player, WeaponType::VAMPIRE_CODEX)) return 0.08f;
+    return 0.0f;
+}
+
+void TryApplyLifeSteal(Bullet* bullet, float passiveScale = 1.0f) {
+    if (!bullet || !bullet->IsPlayerBullet()) return;
+    Player* player = GameManager::GetInstance().GetPlayer();
+    if (!player || player->IsDead()) return;
+
+    float chance = 0.0f;
+    if (bullet->HasLifeSteal()) {
+        chance = bullet->GetLifeStealChance();
+    } else {
+        chance = GetPassiveLifeStealChance(player) * passiveScale;
+    }
+
+    if (chance > 0.0f && RandomFloat(0.0f, 1.0f) < chance) {
+        player->Heal(1);
+    }
+}
+
+} // namespace
+
 // ============================================================
 CollisionManager::CollisionManager()
     : m_debugDraw(false) {
@@ -46,9 +84,11 @@ void CollisionManager::CheckAllCollisions(EntityManager& entityMgr) {
     CheckPlayerVsDoor(entityMgr);
     CheckPlayerVsDropItem(entityMgr);
     CheckPlayerVsChest(entityMgr);
+    CheckDropItemSeparation(entityMgr);
 
     // 敌人碰撞
     CheckEnemyVsPlayer(entityMgr);
+    CheckEnemyVsEnemy(entityMgr);
     CheckEnemyVsObstacle(entityMgr);
     CheckEnemyVsWall(entityMgr);
 }
@@ -108,6 +148,9 @@ void CollisionManager::CheckBulletVsPlayer(EntityManager& entityMgr) {
 
         for (Player* player : players) {
             if (!player || !player->IsActive() || player->IsDead())
+                continue;
+
+            if (player->IsRollInvincible())
                 continue;
 
             if (AABBIntersects(bullet->GetAABB(), player->GetAABB())) {
@@ -176,7 +219,7 @@ void CollisionManager::CheckBulletVsWall(EntityManager& entityMgr) {
         if (!bullet || !bullet->IsActive() || bullet->IsMarkedForDeletion())
             continue;
 
-        const float margin = 4.0f;
+        const float margin = ROOM_WALL_MARGIN;
         bool hitWall = false;
         bool hitVertical = false;
 
@@ -307,11 +350,11 @@ void CollisionManager::CheckPlayerVsDropItem(EntityManager& entityMgr) {
 
             // 使用距离检测（比 AABB 更宽松，便于拾取）
             float dist = Vector2::Distance(player->GetPosition(), item->GetPosition());
-            float pickupRange = 30.0f;
+            float pickupRange = 42.0f;
 
             // 磁吸状态下更容易拾取
             if (item->IsMagnetized()) {
-                pickupRange = 20.0f;
+                pickupRange = 56.0f;
             }
 
             if (dist < pickupRange) {
@@ -375,6 +418,71 @@ void CollisionManager::CheckEnemyVsPlayer(EntityManager& entityMgr) {
 // ============================================================
 // 敌人 vs 障碍物
 // ============================================================
+void CollisionManager::CheckEnemyVsEnemy(EntityManager& entityMgr) {
+    auto enemies = entityMgr.GetEnemies();
+
+    for (size_t i = 0; i < enemies.size(); ++i) {
+        Enemy* a = enemies[i];
+        if (!a || !a->IsActive() || a->IsDead()) continue;
+
+        for (size_t j = i + 1; j < enemies.size(); ++j) {
+            Enemy* b = enemies[j];
+            if (!b || !b->IsActive() || b->IsDead()) continue;
+            if (!AABBIntersects(a->GetAABB(), b->GetAABB())) continue;
+
+            Vector2 pen = GetPenetrationVector(a->GetAABB(), b->GetAABB());
+            if (pen.LengthSquared() < 0.001f) {
+                float side = (a->GetID() < b->GetID()) ? -1.0f : 1.0f;
+                pen = Vector2(side * 4.0f, 0.0f);
+            }
+            a->SetPosition(a->GetPosition() + pen * 0.5f);
+            b->SetPosition(b->GetPosition() - pen * 0.5f);
+            a->SyncAABBToPosition();
+            b->SyncAABBToPosition();
+        }
+    }
+}
+
+void CollisionManager::CheckDropItemSeparation(EntityManager& entityMgr) {
+    auto items = entityMgr.GetDropItems();
+    const float minDist = 22.0f;
+    const float minDistSq = minDist * minDist;
+
+    for (size_t i = 0; i < items.size(); ++i) {
+        DropItem* a = items[i];
+        if (!a || !a->IsActive() || a->IsMarkedForDeletion()) continue;
+
+        for (size_t j = i + 1; j < items.size(); ++j) {
+            DropItem* b = items[j];
+            if (!b || !b->IsActive() || b->IsMarkedForDeletion()) continue;
+
+            Vector2 diff = a->GetPosition() - b->GetPosition();
+            float distSq = diff.LengthSquared();
+            if (distSq >= minDistSq) continue;
+
+            Vector2 dir;
+            float dist = std::sqrt(distSq);
+            if (dist < 0.001f) {
+                float angle = (float)((a->GetID() * 37 + b->GetID() * 19) % 360) * PI / 180.0f;
+                dir = Vector2(std::cos(angle), std::sin(angle));
+                dist = 1.0f;
+            } else {
+                dir = diff * (1.0f / dist);
+            }
+
+            Vector2 offset = dir * ((minDist - dist) * 0.5f);
+            a->SetPosition(a->GetPosition() + offset);
+            b->SetPosition(b->GetPosition() - offset);
+            a->SetX(Clamp(a->GetX(), ROOM_ENTITY_MARGIN, ROOM_WIDTH - ROOM_ENTITY_MARGIN));
+            a->SetY(Clamp(a->GetY(), ROOM_ENTITY_MARGIN, ROOM_HEIGHT - ROOM_ENTITY_MARGIN));
+            b->SetX(Clamp(b->GetX(), ROOM_ENTITY_MARGIN, ROOM_WIDTH - ROOM_ENTITY_MARGIN));
+            b->SetY(Clamp(b->GetY(), ROOM_ENTITY_MARGIN, ROOM_HEIGHT - ROOM_ENTITY_MARGIN));
+            a->SyncAABBToPosition();
+            b->SyncAABBToPosition();
+        }
+    }
+}
+
 void CollisionManager::CheckEnemyVsObstacle(EntityManager& entityMgr) {
     auto enemies   = entityMgr.GetEnemies();
     auto obstacles = entityMgr.GetObstacles();
@@ -404,7 +512,7 @@ void CollisionManager::CheckEnemyVsWall(EntityManager& entityMgr) {
     for (Enemy* enemy : enemies) {
         if (!enemy || !enemy->IsActive() || enemy->IsDead()) continue;
 
-        const float margin = 18.0f;
+        const float margin = ROOM_ENTITY_MARGIN;
         bool clamped = false;
 
         if (enemy->GetX() < margin)       { enemy->SetX(margin); clamped = true; }
@@ -446,15 +554,8 @@ void CollisionManager::ResolveBulletEnemyHit(Bullet* bullet, Enemy* enemy,
         enemy->ApplyFrozen(bullet->GetSlowDuration());
     }
 
-    // 吸血判定
-    if (bullet->HasLifeSteal()) {
-        if (enemy->IsDead() && RandomFloat(0.0f, 1.0f) < bullet->GetLifeStealChance()) {
-            Player* player = GameManager::GetInstance().GetPlayer();
-            if (player) {
-                player->Heal(1);
-            }
-        }
-    }
+    // 吸血判定：魔典类武器自带吸血；拥有吸血魔典时，其他武器也获得较低概率吸血
+    TryApplyLifeSteal(bullet, enemy->IsDead() ? 1.8f : 1.0f);
 
     // 穿透子弹：不销毁，增加穿透计数
     if (bullet->IsPiercing()) {
@@ -493,6 +594,8 @@ void CollisionManager::ResolveBulletEnemyHit(Bullet* bullet, Boss* boss,
 
     // 追踪已命中目标
     if (bullet->IsPiercing()) bullet->AddHitTarget(boss->GetID());
+
+    TryApplyLifeSteal(bullet, 0.65f);
 
     if (bullet->IsPiercing()) {
         bullet->IncrementPierce();

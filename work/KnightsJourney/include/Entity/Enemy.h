@@ -85,6 +85,10 @@ protected:
     // 闲逛状态下的随机运动
     float       m_idleWanderTimer;
     Vector2     m_idleWanderDir;
+
+    // 战斗 AI 的短周期决策缓存
+    float       m_aiDecisionTimer;
+    Vector2     m_tacticalDir;
 };
 
 // ============================================================
@@ -130,6 +134,21 @@ private:
     float     m_stunTimer;
     Vector2   m_rushDirection;
     float     m_rushSpeed;
+};
+
+// ============================================================
+// 森林幽灯 (Forest) - 绕身移动并发射孢子弹
+// ============================================================
+class ForestWisp : public Enemy {
+public:
+    ForestWisp();
+    virtual void UpdateAI(float deltaTime) override;
+    virtual void Render() override;
+    virtual const char* GetTypeName() const override { return "ForestWisp"; }
+
+private:
+    float m_orbitAngle;
+    float m_preferredDistance;
 };
 
 // ============================================================
@@ -180,6 +199,21 @@ private:
     int     m_burstCount;          // 一轮发射几发
     float   m_burstInterval;       // 每发间隔
     float   m_burstAngleSpread;    // 扇形角度
+};
+
+// ============================================================
+// 霜刃游卫 (Ice Dungeon) - 高速斜切并发射减速冰刃
+// ============================================================
+class FrostScout : public Enemy {
+public:
+    FrostScout();
+    virtual void UpdateAI(float deltaTime) override;
+    virtual void Render() override;
+    virtual const char* GetTypeName() const override { return "FrostScout"; }
+
+private:
+    float m_skateTimer;
+    float m_sideSign;
 };
 
 // ============================================================
@@ -237,6 +271,21 @@ private:
     bool    m_isExploding;
     float   m_explosionTimer;
     bool    m_ignoreObstacles;     // 无视障碍物
+};
+
+// ============================================================
+// 余烬小鬼 (Volcano) - 机动走位并发射成对火弹
+// ============================================================
+class EmberImp : public Enemy {
+public:
+    EmberImp();
+    virtual void UpdateAI(float deltaTime) override;
+    virtual void Render() override;
+    virtual const char* GetTypeName() const override { return "EmberImp"; }
+
+private:
+    float m_phaseTimer;
+    float m_zigzag;
 };
 
 // ============================================================

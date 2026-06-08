@@ -118,7 +118,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 // MSVC (VS Developer Command Prompt):
 //   cl /EHsc /std:c++11 /I. main.cpp src\*.cpp /Fe:KnightsJourney.exe
 //
-// MinGW-w64:
-//   g++ -std=c++11 -I. main.cpp src/*.cpp -lgraphics -lgdi32 -lmsimg32 -lwinmm
-//       -o KnightsJourney.exe
+// MinGW-w64 + EasyX for MinGW:
+//   powershell -ExecutionPolicy Bypass -File .\build.ps1
+//   or:
+//   g++ -std=c++11 -finput-charset=UTF-8 -fexec-charset=GBK -I. main.cpp src/*.cpp
+//       -leasyx -lgdi32 -lole32 -lwinmm -o output\KnightsJourney.exe
 // ============================================================

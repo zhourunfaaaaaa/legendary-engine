@@ -5,6 +5,8 @@
 #include "../include/Entity/Chest.h"
 #include "../include/Entity/Player.h"
 #include "../include/Core/GameManager.h"
+#include "../include/Graphics/VisualEffects.h"
+#include "../include/Weapon/WeaponTypes.h"
 #include <graphics.h>
 #include <cstdio>
 
@@ -29,34 +31,41 @@ void Chest::Render() {
     int cx = (int)m_position.x;
     int cy = (int)m_position.y;
 
+    VisualFX::DrawPixelShadow(cx, cy + 18, 24, 10);
+
     if (m_isMimic && !m_isOpened) {
         // 宝箱怪伪装成宝箱
-        setfillcolor(RGB(120, 80, 20));
-        solidrectangle(cx - 14, cy - 10, cx + 14, cy + 10);
-        setfillcolor(RGB(200, 160, 40));
-        solidrectangle(cx - 12, cy - 8, cx + 12, cy + 8);
+        VisualFX::DrawPixelRect(cx - 24, cy - 15, cx + 24, cy + 17,
+                                RGB(184, 111, 42), RGB(29, 22, 18), 5);
+        setfillcolor(RGB(222, 158, 52));
+        solidrectangle(cx - 18, cy - 6, cx + 18, cy + 10);
         setfillcolor(RGB(255, 40, 40));
-        solidcircle(cx - 4, cy, 3);
-        solidcircle(cx + 4, cy, 3);
+        solidrectangle(cx - 10, cy - 2, cx - 4, cy + 4);
+        solidrectangle(cx + 4, cy - 2, cx + 10, cy + 4);
     } else if (m_isOpened) {
-        setfillcolor(RGB(60, 40, 10));
-        solidrectangle(cx - 14, cy - 4, cx + 14, cy + 12);
-        setfillcolor(RGB(140, 100, 30));
-        solidrectangle(cx - 12, cy - 2, cx + 12, cy + 10);
+        VisualFX::DrawPixelRect(cx - 24, cy - 5, cx + 24, cy + 18,
+                                RGB(96, 58, 24), RGB(30, 22, 15), 5);
+        VisualFX::DrawPixelRect(cx - 22, cy - 19, cx + 22, cy - 6,
+                                RGB(142, 87, 34), RGB(30, 22, 15), 4);
         // 内容物标识
         if (m_contentType == DropType::WEAPON_DROP) {
-            setfillcolor(RGB(220, 160, 255));
-            solidcircle(cx, cy + 4, 4);
+            int tier = GetWeaponTier(m_containedWeapon);
+            COLORREF gem = tier == 3 ? RGB(255, 220, 86) :
+                           tier == 2 ? RGB(120, 220, 255) :
+                                       RGB(201, 133, 245);
+            VisualFX::DrawPixelDiamond(cx, cy + 5, 8, gem, RGB(34, 20, 45));
         }
     } else {
         // 关闭的宝箱
-        setfillcolor(RGB(100, 60, 15));
-        solidrectangle(cx - 14, cy - 10, cx + 14, cy + 10);
-        setfillcolor(RGB(180, 140, 30));
-        solidrectangle(cx - 12, cy - 8, cx + 12, cy + 8);
+        VisualFX::DrawPixelRect(cx - 24, cy - 15, cx + 24, cy + 17,
+                                RGB(184, 111, 42), RGB(29, 22, 18), 5);
+        setfillcolor(RGB(222, 158, 52));
+        solidrectangle(cx - 18, cy - 6, cx + 18, cy + 10);
+        setfillcolor(RGB(122, 74, 32));
+        solidrectangle(cx - 22, cy - 14, cx + 22, cy - 6);
         // 锁扣
-        setfillcolor(RGB(255, 215, 0));
-        solidcircle(cx, cy, 4);
+        VisualFX::DrawPixelRect(cx - 7, cy - 3, cx + 7, cy + 9,
+                                RGB(238, 195, 63), RGB(60, 39, 12), 3);
 
         // 靠近时显示提示
         Player* player = GameManager::GetInstance().GetPlayer();
@@ -65,9 +74,9 @@ void Chest::Render() {
             if (dist < 50.0f) {
                 setbkmode(TRANSPARENT);
                 settextcolor(RGB(255, 255, 200));
-                settextstyle(12, 0, _T("Consolas"));
+                settextstyle(12, 0, _T("Microsoft YaHei UI"));
                 RECT rc = {cx - 50, cy - 40, cx + 50, cy - 20};
-                drawtext(_T("Press E to open"), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                drawtext(_T("按 E 打开"), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             }
         }
     }

@@ -68,10 +68,13 @@ public:
     bool HasDamageBoost() const { return m_hasDamageBoost; }
     bool HasGoldBonus() const { return m_hasGoldBonus; }
     bool HasReviveCharm() const { return m_hasReviveCharm; }
+    bool HasPotionMastery() const { return m_hasPotionMastery; }
+    bool HasBossHunter() const { return m_hasBossHunter; }
+    bool HasTreasureInstinct() const { return m_hasTreasureInstinct; }
 
-    float GetCDReductionPercent() const { return 0.40f; }
-    float GetGoldMultiplier() const { return m_hasGoldBonus ? 2.0f : 1.0f; }
-    float GetShopDiscount() const { return m_hasGoldBonus ? 0.80f : 1.0f; }
+    float GetCDReductionPercent() const { return m_hasCDReduction ? 0.30f : 0.0f; }
+    float GetGoldMultiplier() const { return m_hasGoldBonus ? 1.6f : 1.0f; }
+    float GetShopDiscount() const { return m_hasGoldBonus ? 0.85f : 1.0f; }
     float GetExplosionRadiusBonus() const { return m_hasFireShield ? 1.5f : 1.0f; }
     float GetIceDamageReduction() const { return m_hasIceShield ? 0.50f : 1.0f; }
 
@@ -91,4 +94,7 @@ private:
     bool m_hasDamageBoost;
     bool m_hasGoldBonus;
     bool m_hasReviveCharm;
+    bool m_hasPotionMastery;
+    bool m_hasBossHunter;
+    bool m_hasTreasureInstinct;
 };
