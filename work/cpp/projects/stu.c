@@ -56,7 +56,7 @@ int get_int(int* value)
     if (buffer[0] == '\n') {
         return 0;
     }
-    char *end;
+    char* end;
     long number = strtol(buffer, &end, 10);// strtol返回long类型的值
     if (*end != '\n' && *end != '\0') {
         return 0;
@@ -65,7 +65,7 @@ int get_int(int* value)
     return 1;
 }
 
-int get_float(float *value)
+int get_float(float* value)
 {
     char buffer[MAX_INPUT_LENGTH];
     if (!fgets(buffer, sizeof(buffer), stdin)) {
@@ -74,7 +74,7 @@ int get_float(float *value)
     if (buffer[0] == '\n') {
         return 0;
     }
-    char *end;
+    char* end;
     double number = strtod(buffer, &end);// strtod返回double类型的值
     if (*end != '\n' && *end != '\0') {
         return 0;
@@ -103,7 +103,7 @@ int validate_date(const char* date)
     return day <= max_day;
 }
 
-int load_table(const char* file_name, void* buffer, int *count, int max, size_t record_size)// buffer接收任何类型的结构体数组，record_size每条记录的大小
+int load_table(const char* file_name, void* buffer, int* count, int max, size_t record_size)// buffer接收任何类型的结构体数组，record_size每条记录的大小
 {
     FILE* fp = fopen(file_name, "rb");// rb表示二进制只读
     if (!fp) {

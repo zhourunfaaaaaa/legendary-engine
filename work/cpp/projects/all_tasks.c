@@ -14,7 +14,7 @@ typedef struct {
 
 void task1()
 {
-    FILE *f1 = fopen("grade.txt", "w");
+    FILE* f1 = fopen("grade.txt", "w");
     if (f1 == NULL) return;
     char id[20], name[50];
     float score[5];
@@ -36,8 +36,8 @@ void task1()
 
 void task2()
 {
-    FILE *f1 = fopen("grade.txt", "r");
-    FILE *f2 = fopen("new_grade.txt", "w");
+    FILE* f1 = fopen("grade.txt", "r");
+    FILE* f2 = fopen("new_grade.txt", "w");
     if (f1 == NULL || f2 == NULL) return;
     char save[N][256];
     float ave[N];
@@ -73,7 +73,7 @@ void task2()
 void task3()
 {
     stu s[N];
-    FILE *f1 = fopen("grade.dat", "wb");
+    FILE* f1 = fopen("grade.dat", "wb");
     if (!f1) return;
     for(int i = 0; i < N; i++) {
         printf("请输入第%d个学生的学号、姓名、5门课成绩：\n", i + 1);
@@ -91,7 +91,7 @@ void task3()
 void task4()
 {
     stu s[N];
-    FILE *f1 = fopen("grade.dat", "rb");
+    FILE* f1 = fopen("grade.dat", "rb");
     if (f1 == NULL) return;
     for (int i = 0; i < N; i++) fread(&s[i], sizeof(stu), 1, f1);
     fclose(f1);
@@ -102,7 +102,7 @@ void task4()
             }
         }
     }
-    FILE *f2 = fopen("sorted_grade.dat", "wb");
+    FILE* f2 = fopen("sorted_grade.dat", "wb");
     if (f2 == NULL) return;
     for (int i = 0; i < N; i++) fwrite(&s[i], sizeof(stu), 1, f2);
     fclose(f2);
@@ -112,7 +112,7 @@ void task5()
 {
     char input;
     do {
-        FILE *f1 = fopen("id.txt", "r");
+        FILE* f1 = fopen("id.txt", "r");
         if (f1 == NULL) return;
         char id_pool[100][20];
         int count = 0;
@@ -128,7 +128,7 @@ void task5()
             if (i != n) fprintf(f1, "%s\n", id_pool[i]);
         }
         fclose(f1);
-        FILE *f2 = fopen("grade.dat", "rb+");
+        FILE* f2 = fopen("grade.dat", "rb+");
         if (f2 == NULL) return;
         stu s; int found = 0; long pos = 0;
         while (fread(&s, sizeof(stu), 1, f2) == 1) {

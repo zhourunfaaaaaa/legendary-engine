@@ -66,9 +66,9 @@ int get_string(char* destination, int size);
 
 int input_required(const char* prompt, char* destination, int size);
 
-int get_int(int *value);
+int get_int(int* value);
 
-int get_float(float *value);
+int get_float(float* value);
 
 int validate_date(const char* date);
 

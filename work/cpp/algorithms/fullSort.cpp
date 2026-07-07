@@ -21,9 +21,9 @@ void dfs(vector<int> &nums) {
         used[i] = true;
         path.push_back(nums[i]);
         
-        dfs(nums);// 选下一个数(递归)
+        dfs(nums); // 选下一个数(递归)
 
-        path.pop_back();// 把数放回去(回溯)
+        path.pop_back(); // 把数放回去(回溯)
         used[i] = false;
     }
 } 

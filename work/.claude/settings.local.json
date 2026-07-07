@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(xelatex -interaction=nonstopmode \"小学期实验报告.tex\")",
-      "Bash(xelatex \"小学期实验报告_完整.tex\")"
+      "Bash(xelatex \"小学期实验报告_完整.tex\")",
+      "mcp__godot-mcp__scene_management",
+      "mcp__godot-mcp__scene_run",
+      "mcp__godot-mcp__debug_log",
+      "mcp__godot-mcp__debug_performance",
+      "mcp__godot-mcp__scene_hierarchy"
     ]
   }
 }

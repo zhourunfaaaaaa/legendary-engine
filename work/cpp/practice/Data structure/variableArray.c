@@ -43,22 +43,22 @@ Array array_creat(int size){
     return a;
 }
 
-void array_free(Array *a){
+void array_free(Array* a){
     free(a->array);
     a->array = NULL;
     a->size = 0;
 }
 
-int array_size(Array *a){
+int array_size(Array* a){
     return a->size;
 }
 
-int* array_at(Array *a,int index){
+int* array_at(Array* a,int index){
     return &(a->array[index]);
 }
 
-void array_inflate(Array *a,int more_size){
-    int*p = (int*)malloc(sizeof(int)*(a->size+more_size));
+void array_inflate(Array* a,int more_size){
+    int* p = (int*)malloc(sizeof(int)*(a->size+more_size));
     for (int i = 0;i <= a->size;i++) {
         p[i] = a->array[i];
     }

@@ -49,7 +49,7 @@ void list_print(List* pList) {
 }
 
 void list_delete(List* pList,int number) {
-    Node *p,*q;
+    Node* p, *q;
     for (p = pList->head,q = NULL;p;q = p,p = p->next) {
         if (p->value == number) {
             if (q) {
@@ -64,7 +64,7 @@ void list_delete(List* pList,int number) {
 }
 
 void list_clear(List* pList) {
-    Node *p,*q;
+    Node* p, *q;
     p = pList->head;
     while (p) {
         q = p->next;

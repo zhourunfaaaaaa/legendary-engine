@@ -3,14 +3,14 @@
 #include "linkedList_WenKai.h"
 
 typedef struct list {
-    Node *head;
-    Node *tail;
+    Node* head;
+    Node* tail;
 }List;// 封装
 
 // 添加链表
-void list_add(List *list,int number)
+void list_add(List* list,int number)
 {
-    Node *p = (Node*)malloc(sizeof(Node));
+    Node* p = (Node*)malloc(sizeof(Node));
     p->value = number;
     p->next = NULL;
     if (list->head == NULL) {
@@ -23,9 +23,9 @@ void list_add(List *list,int number)
 }
 
 // 遍历
-void list_print(List *list)
+void list_print(List* list)
 {
-    Node *p;
+    Node* p;
     for(p = list->head ;p ;p = p->next) {
         printf("%d\t",p->value);
     }
@@ -33,11 +33,11 @@ void list_print(List *list)
 }
 
 // 删除
-void list_delete(List *list,int number)
+void list_delete(List* list,int number)
 {
-    Node *p = list->head;
-    Node *q = NULL;
-    Node *t;
+    Node* p = list->head;
+    Node* q = NULL;
+    Node* t;
     while (p != NULL) {
         t = p->next;
         if (p->value == number) {
@@ -59,10 +59,10 @@ void list_delete(List *list,int number)
 }
 
 // 清除整个链表
-void list_clear(List *list)
+void list_clear(List* list)
 {
-    Node *p;
-    Node *q;
+    Node* p;
+    Node* q;
     for (p = list->head,q = NULL; p;p = q) {
         q = p->next;
         free(p);

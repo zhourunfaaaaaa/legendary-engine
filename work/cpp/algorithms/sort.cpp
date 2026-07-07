@@ -21,7 +21,7 @@ void merge(int a[], int left, int right, int mid)
     while (j <= right) {
         temp[k++] = a[j++];
     }
-    //复制数组
+    // 复制数组
     for (int i = left; i <= right; i++) {
         a[i] = temp[i];
     }
@@ -56,7 +56,7 @@ void merge(int a[], int left, int right)
     while (j <= right) {
         temp[k++] = a[j++];
     }
-    //复制数组
+    // 复制数组
     for (int i = left; i <= right; i++) {
         a[i] = temp[i];
     }
