@@ -21,7 +21,7 @@ int main() {
     long long ans = 0;
     
     for (int i = 1; i <= n; i++) {
-        ans += cnt[pre[i] - k]; // 先查询后插入保证不重复
+        ans += cnt[pre[i] - k]; // 先查询后插入保证不重复，若n不是有效的键，cnt[n] = 0；
         cnt[pre[i]]++;          // 同时查询和插入，由于l-1一定在r的左边，所以保证不遗漏
     }
     
