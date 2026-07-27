@@ -1,20 +1,18 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-using ll = long long;
-
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
 
     int N;
-    ll M;
+    long long M;
     cin >> N >> M;
 
-    vector<ll> A(N);
-    ll total = 0;
+    vector<long long> A(N);
+    long long total = 0;
 
-    for (ll& value : A) {
+    for (long long& value : A) {
         cin >> value;
         total += value;
     }
@@ -27,14 +25,14 @@ int main() {
 
     // ok：一定可行
     // ng：一定不可行
-    ll ok = 0;
-    ll ng = *max_element(A.begin(), A.end());
+    long long ok = 0;
+    long long ng = *max_element(A.begin(), A.end());
 
     while (ng - ok > 1) {
-        ll mid = ok + (ng - ok) / 2;
+        long long mid = ok + (ng - ok) / 2;
 
-        ll cost = 0;
-        for (ll value : A) {
+        long long cost = 0;
+        for (long long value : A) {
             cost += min(value, mid);
         }
 
